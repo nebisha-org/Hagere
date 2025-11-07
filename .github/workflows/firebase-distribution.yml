@@ -11,22 +11,36 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.13.x'
 
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/my-release-key.jks
+
+      - name: Create key.properties
+        run: |
+          echo "storeFile=my-release-key.jks" >> android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build Android APK
         run: flutter build apk --release
-
-      - name: Build iOS
-        run: |
-          flutter build ios --release --no-codesign
 
       - name: Upload Android to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
@@ -36,7 +50,11 @@ jobs:
           groups: testers
           file: build/app/outputs/flutter-apk/app-release.apk
 
-      # Optional iOS upload step (you must configure code signing manually)
+      # Optional iOS build (requires manual provisioning + signing config)
+      # - name: Build iOS
+      #   run: flutter build ios --release --no-codesign
+
+      # Optional iOS Upload
       # - name: Upload iOS to Firebase App Distribution
       #   uses: wzieba/Firebase-Distribution-Github-Action@v1
       #   with:
@@ -44,4 +62,3 @@ jobs:
       #     token: ${{ secrets.FIREBASE_TOKEN }}
       #     groups: testers
       #     file: build/ios/ipa/YourApp.ipa
-
