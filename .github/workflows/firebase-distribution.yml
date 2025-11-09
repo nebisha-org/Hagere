@@ -1,29 +1,26 @@
-name: Firebase App Distribution
+name: Build & Distribute Flutter App
 
 on:
   push:
     branches:
-      - main
+      - main  # or your primary branch
 
 jobs:
   build:
-    name: Build & Distribute Flutter App
-    runs-on: macos-latest
+    name: Build Android APK
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.13.x'
+          flutter-version: '3.13.9'  # Dart 3.3.x compatible
+
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Decode keystore
         run: |
@@ -31,13 +28,10 @@ jobs:
 
       - name: Create key.properties
         run: |
-          echo "storeFile=my-release-key.jks" >> android/key.properties
-          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-
-      - name: Install dependencies
-        run: flutter pub get
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=my-release-key.jks" >> android/key.properties
 
       - name: Build Android APK
         run: flutter build apk --release
@@ -45,20 +39,7 @@ jobs:
       - name: Upload Android to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
-          appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          appId: ${{ secrets.FIREBASE_APP_ID }}
           token: ${{ secrets.FIREBASE_TOKEN }}
           groups: testers
           file: build/app/outputs/flutter-apk/app-release.apk
-
-      # Optional iOS build (requires manual provisioning + signing config)
-      # - name: Build iOS
-      #   run: flutter build ios --release --no-codesign
-
-      # Optional iOS Upload
-      # - name: Upload iOS to Firebase App Distribution
-      #   uses: wzieba/Firebase-Distribution-Github-Action@v1
-      #   with:
-      #     appId: ${{ secrets.FIREBASE_IOS_APP_ID }}
-      #     token: ${{ secrets.FIREBASE_TOKEN }}
-      #     groups: testers
-      #     file: build/ios/ipa/YourApp.ipa
