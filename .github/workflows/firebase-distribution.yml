@@ -17,7 +17,14 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.0'  
+          flutter-version: '3.16.0'
+          channel: 'stable'
+          cache: false
+
+      - name: Check Flutter & Dart version
+        run: |
+          flutter --version
+          dart --version
 
       - name: Install dependencies
         run: flutter pub get
@@ -43,14 +50,3 @@ jobs:
           token: ${{ secrets.FIREBASE_TOKEN }}
           groups: testers
           file: build/app/outputs/flutter-apk/app-release.apk
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.0-stable'
-          channel: 'stable'
-          cache: false
-      - name: Check Flutter & Dart version
-        run: |
-          flutter --version
-          dart --version
-
