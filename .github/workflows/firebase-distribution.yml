@@ -3,7 +3,7 @@ name: Build & Distribute Flutter App
 on:
   push:
     branches:
-      - main  # or your primary branch
+      - main
 
 jobs:
   build:
@@ -14,11 +14,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Flutter
+      - name: Set up Flutter (3.16.0 with Dart >= 3.3.0)
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.16.0'
-          channel: 'stable'
+          channel: stable
           cache: false
 
       - name: Check Flutter & Dart version
