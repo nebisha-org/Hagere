@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "487886804143",
+    "project_id": "hagere-663c4",
+    "storage_bucket": "hagere-663c4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:487886804143:android:26a64bac0738bec6e6f05a",
+        "android_client_info": {
+          "package_name": "com.example.agerelige_flutter_client"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1sZU4xKaD5wN1KfqVgUvbAiBvUfxDW-k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
