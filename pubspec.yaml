@@ -6,7 +6,6 @@ version: 0.1.0+1
 environment:
   sdk: ">=3.2.0 <4.0.0"
 
-
 dependencies:
   flutter:
     sdk: flutter
@@ -14,14 +13,18 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_hooks: ^0.20.5
   hooks_riverpod: ^2.5.1
-  firebase_core: ^2.27.0
-  firebase_auth: ^4.17.0     # Optional - if using auth
-  cloud_firestore: ^5.6.0    # Optional - if using Firestore
-  firebase_messaging: ^15.5.0  # Optional - if using push notifications
-  firebase_analytics: ^11.6.0  # Optional - if using analytics"
-  dev_dependencies: any
+
+  # 🔥 Firebase (all aligned with latest gen)
+  firebase_core: ^4.2.1        # latest core :contentReference[oaicite:0]{index=0}
+  firebase_auth: ^6.1.2        # latest auth :contentReference[oaicite:1]{index=1}
+  cloud_firestore: ^6.1.0      # latest firestore :contentReference[oaicite:2]{index=2}
+  firebase_messaging: ^16.0.4  # latest messaging :contentReference[oaicite:3]{index=3}
+  firebase_analytics: ^12.0.4  # latest analytics :contentReference[oaicite:4]{index=4}
+
+dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+
 flutter:
   uses-material-design: true
