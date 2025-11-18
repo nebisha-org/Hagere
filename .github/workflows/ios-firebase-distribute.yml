@@ -44,8 +44,7 @@ jobs:
           UUID=$(grep -a -o "<key>UUID</key><string>[-A-F0-9]\{36\}</string>" ios_dist.mobileprovision | \
                  sed -E 's/.*<string>(.*)<\/string>.*/\1/')
           cp ios_dist.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
-            - name: Ensure CocoaPods is set up
-            
+      - name: Ensure CocoaPods is set up
         run: |
           pod --version
           pod setup
