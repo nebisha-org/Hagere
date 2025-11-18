@@ -49,15 +49,15 @@ jobs:
           pod --version
           pod setup
 
-      - name: Pre-install iOS pods (with retry)
+      - name: Seed CocoaPods Specs repo from GitHub
+        run: |
+          mkdir -p ~/.cocoapods/repos
+          git clone --depth 1 https://github.com/CocoaPods/Specs.git ~/.cocoapods/repos/trunk
+
+      - name: Pre-install iOS pods
         run: |
           cd ios
-          for i in 1 2 3; do
-            echo "Running pod install (attempt $i)..."
-            pod install --no-repo-update && break
-            echo "pod install failed, retrying in 15s..."
-            sleep 15
-          done
+          pod install --no-repo-update
           cd ..
 
       - name: Flutter pub get
