@@ -49,10 +49,15 @@ jobs:
           pod --version
           pod setup
 
-      - name: Pre-install iOS pods
+      - name: Pre-install iOS pods (with retry)
         run: |
           cd ios
-          pod install --no-repo-update
+          for i in 1 2 3; do
+            echo "Running pod install (attempt $i)..."
+            pod install --no-repo-update && break
+            echo "pod install failed, retrying in 15s..."
+            sleep 15
+          done
           cd ..
 
       - name: Flutter pub get
