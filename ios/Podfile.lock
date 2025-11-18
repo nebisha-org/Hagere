@@ -1473,7 +1473,7 @@ DEPENDENCIES:
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
 
 SPEC REPOS:
-  trunk:
+  https://github.com/CocoaPods/Specs.git:
     - abseil
     - BoringSSL-GRPC
     - Firebase
@@ -1555,6 +1555,6 @@ SPEC CHECKSUMS:
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
 
-PODFILE CHECKSUM: 871ce0ba0e89e45051d9064a4143325370c783ea
+PODFILE CHECKSUM: b2563d57489e72c4e5cd447e0686e5e55c497ef2
 
 COCOAPODS: 1.16.2
