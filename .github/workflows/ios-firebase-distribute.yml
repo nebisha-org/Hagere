@@ -13,6 +13,7 @@ jobs:
       FIREBASE_IOS_APP_ID: ${{ secrets.FIREBASE_IOS_APP_ID }}
       IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
       IOS_MOBILEPROVISION_BASE64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -31,7 +32,7 @@ jobs:
       - name: Create keychain and import certificate
         run: |
           security create-keychain -p "" build.keychain
-          security import ios_dist.p12 -k build.keychain -P "" -T /usr/bin/codesign
+          security import ios_dist.p12 -k build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security list-keychains -d user -s build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "" build.keychain
