@@ -51,14 +51,10 @@ jobs:
 
       - name: Pre-install iOS pods
         run: |
-          # Reset CocoaPods specs repo and add trunk explicitly
-          rm -rf ~/.cocoapods/repos
-          pod repo add trunk https://cdn.cocoapods.org/
-
           cd ios
-          pod install
+          pod install --no-repo-update
           cd ..
-          
+
       - name: Flutter pub get
         run: flutter pub get
 
