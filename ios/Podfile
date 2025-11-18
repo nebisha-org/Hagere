@@ -1,5 +1,7 @@
 # ios/Podfile
 
+source 'https://github.com/CocoaPods/Specs.git'
+
 platform :ios, '15.0'
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
