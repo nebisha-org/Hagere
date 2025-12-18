@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'screens/user_list_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'screens/entities_screen.dart';
 
 void main() {
-  runApp(const AgereLigeApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ProviderScope(child: AgereLigeApp()));
 }
 
 class AgereLigeApp extends StatelessWidget {
@@ -12,11 +15,8 @@ class AgereLigeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'AgereLige',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
-      home: const UserListScreen(),
+      theme: ThemeData(useMaterial3: true),
+      home: const EntitiesScreen(),
     );
   }
 }
