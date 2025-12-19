@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/providers.dart';
+import '../utils/geo.dart';
 
 class EntitiesScreen extends ConsumerWidget {
   const EntitiesScreen({super.key});
@@ -23,7 +24,7 @@ class EntitiesScreen extends ConsumerWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: loc == null
-            ? _LocationGate()
+            ? const _LocationGate()
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -37,7 +38,7 @@ class EntitiesScreen extends ConsumerWidget {
                             if (items.isEmpty) {
                               return const Center(
                                 child: Text(
-                                  'No items returned.\n(That means API returned [] or your query is wrong.)',
+                                  'No items returned.\n(API returned [] or your query is wrong.)',
                                   textAlign: TextAlign.center,
                                 ),
                               );
@@ -55,13 +56,52 @@ class EntitiesScreen extends ConsumerWidget {
                                         const Divider(height: 1),
                                     itemBuilder: (_, i) {
                                       final e = items[i];
+
+                                      // ✅ Pull from DynamoDB location.lat.N + location.lon.N
+                                      final lat = extractCoord(e, 'lat') ??
+                                          toDouble(e['latitude']);
+                                      final lon = extractCoord(e, 'lon') ??
+                                          toDouble(e['longitude']);
+
+                                      String distanceText = '—';
+
+                                      if (lat != null &&
+                                          lon != null &&
+                                          loc.latitude != null &&
+                                          loc.longitude != null) {
+                                        final meters = distanceMeters(
+                                          lat1: loc.latitude!,
+                                          lon1: loc.longitude!,
+                                          lat2: lat,
+                                          lon2: lon,
+                                        );
+
+                                        distanceText = meters < 1000
+                                            ? '${meters.round()} m'
+                                            : '${(meters / 1000).toStringAsFixed(1)} km';
+                                      }
+
                                       return ListTile(
                                         title: Text(
                                             e['name']?.toString() ?? 'Unknown'),
-                                        subtitle: Text(
-                                            e['address']?.toString() ?? ''),
+                                        subtitle: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                                e['address']?.toString() ?? ''),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              distanceText,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelSmall,
+                                            ),
+                                          ],
+                                        ),
                                         trailing: Text(
                                             e['subtype']?.toString() ?? ''),
+                                        isThreeLine: true,
                                       );
                                     },
                                   ),
@@ -87,32 +127,26 @@ class EntitiesScreen extends ConsumerWidget {
 }
 
 class _LocationGate extends ConsumerWidget {
+  const _LocationGate();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Center(
       child: ElevatedButton(
         onPressed: () async {
-          // ignore: avoid_print
-          print('Enable Location tapped');
-          print('🔥🔥🔥 ENABLE LOCATION BUTTON TAPPED 🔥🔥🔥');
+          debugPrint('🔥 ENABLE LOCATION BUTTON TAPPED');
           try {
             await ref.read(locationControllerProvider).ensureLocationReady();
             debugPrint('UI: ensureLocationReady finished');
           } catch (e, st) {
             debugPrint('UI: ensureLocationReady FAILED: $e');
             debugPrintStack(stackTrace: st);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(e.toString())),
+              );
+            }
           }
-          // try {
-          //   await ref.read(locationControllerProvider).ensureLocationReady();
-          //   //ref.invalidate(entitiesProvider);
-          //   ref.refresh(userLocationProvider);
-          // } catch (e) {
-          //   if (context.mounted) {
-          //     ScaffoldMessenger.of(context).showSnackBar(
-          //       SnackBar(content: Text(e.toString())),
-          //     );
-          //   }
-          // }
         },
         child: const Text('Enable Location'),
       ),
