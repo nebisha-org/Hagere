@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'screens/entities_screen.dart';
+import 'package:agerelige_flutter_client/screens/categories_screen.dart';
+import 'package:agerelige_flutter_client/screens/entities_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +17,8 @@ class AgereLigeApp extends StatelessWidget {
     return MaterialApp(
       title: 'AgereLige',
       theme: ThemeData(useMaterial3: true),
-      home: const EntitiesScreen(),
+      //home: const EntitiesScreen(),
+      home: CategoriesScreen(),
     );
   }
 }

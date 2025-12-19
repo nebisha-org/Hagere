@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/providers.dart';
 import '../utils/geo.dart';
+import 'package:agerelige_flutter_client/state/category_providers.dart';
 
 class EntitiesScreen extends ConsumerWidget {
   const EntitiesScreen({super.key});
@@ -10,10 +11,12 @@ class EntitiesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final loc = ref.watch(userLocationProvider);
+    final selectedCategory = ref.watch(selectedCategoryProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nearby'),
+        //title: const Text('Nearby'),
+        title: Text(selectedCategory?.title ?? 'Nearby'),
         actions: [
           IconButton(
             onPressed: () => ref.invalidate(entitiesProvider),

@@ -7,9 +7,13 @@ environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
+  flutter_riverpod: ^2.5.1
+  http: ^1.2.2
+  location: ^6.0.2
+
   flutter:
     sdk: flutter
-  location : ^5.0.0
+  #location : ^5.0.0
   dio: ^5.7.0
   cached_network_image: ^3.4.1
   flutter_hooks: ^0.20.5
