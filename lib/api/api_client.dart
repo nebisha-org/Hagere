@@ -4,9 +4,14 @@ import '../models/user.dart';
 
 class ApiClient {
   ApiClient({Dio? dio})
-      : _dio = dio ?? Dio(BaseOptions(baseUrl: _baseUrl, connectTimeout: const Duration(seconds: 15), receiveTimeout: const Duration(seconds: 20)));
+      : _dio = dio ??
+            Dio(BaseOptions(
+                baseUrl: _baseUrl,
+                connectTimeout: const Duration(seconds: 15),
+                receiveTimeout: const Duration(seconds: 20)));
 
-  static const String _baseUrl = 'https://6qipli13v7.execute-api.us-east-2.amazonaws.com/api/';
+  static const String _baseUrl =
+      'https://6qipli13v7.execute-api.us-east-2.amazonaws.com/api';
 
   final Dio _dio;
 
@@ -14,7 +19,9 @@ class ApiClient {
   Future<List<User>> listUsers() async {
     final res = await _dio.get<Map<String, dynamic>>('users');
     final usersJson = (res.data?['users'] as List<dynamic>? ?? []);
-    return usersJson.map((e) => User.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    return usersJson
+        .map((e) => User.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
   }
 
   /// GET /users/{id} -> Item
@@ -62,7 +69,8 @@ class ApiClient {
     final res = await _dio.post<Map<String, dynamic>>('upload-url');
     final url = res.data?['uploadURL'] as String?;
     final key = res.data?['fileKey'] as String?;
-    if (url == null || key == null) throw Exception('upload-url response invalid');
+    if (url == null || key == null)
+      throw Exception('upload-url response invalid');
     return (url, key);
   }
 
