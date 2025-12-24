@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/category_providers.dart';
 import '../state/providers.dart';
-import 'entities_screen.dart';
+import '../state/sponsored_providers.dart';
 
+import 'entities_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
+// keep import even if hidden, no harm
 import 'package:agerelige_flutter_client/widgets/promote_home_tile.dart';
 
 class CategoriesScreen extends ConsumerWidget {
@@ -16,6 +18,16 @@ class CategoriesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cats = ref.watch(categoriesProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
+    final sponsoredAsync = ref.watch(homeSponsoredProvider);
+
+    // rows:
+    // 0..cats.length-1 => categories
+    // cats.length      => AddListingCard
+    // cats.length+1    => Sponsored section
+    final categoriesCount = cats.length;
+    final addListingIndex = categoriesCount;
+    final sponsoredIndex = categoriesCount + 1;
+    final totalRows = categoriesCount + 2;
 
     return Scaffold(
       appBar: AppBar(
@@ -24,11 +36,27 @@ class CategoriesScreen extends ConsumerWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView.separated(
-          itemCount: cats.length + 2,
+          itemCount: totalRows,
           separatorBuilder: (_, __) => const Divider(height: 1),
-          itemBuilder: (_, i) {
-            // Row after categories: Add Listing card
-            if (i == cats.length) {
+          itemBuilder: (context, i) {
+            // 1) Category rows
+            if (i < categoriesCount) {
+              final c = cats[i];
+              return ListTile(
+                leading: Text(c.emoji, style: const TextStyle(fontSize: 22)),
+                title: Text(c.title),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  ref.read(selectedCategoryProvider.notifier).state = c;
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const EntitiesScreen()),
+                  );
+                },
+              );
+            }
+
+            // 2) Add Listing card
+            if (i == addListingIndex) {
               return AddListingCard(
                 onTap: () => Navigator.of(context).pushNamed(
                   AddListingScreen.routeName,
@@ -37,40 +65,58 @@ class CategoriesScreen extends ConsumerWidget {
               );
             }
 
-            // Last row: Promote tile
-            if (i == cats.length + 1) {
-              return entityIdAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-                error: (e, _) => Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text('Could not load device id: $e'),
-                ),
-                data: (entityId) => PromoteHomeTile(
-                  entityId: entityId,
-                  apiBaseUrl: apiBaseUrl,
-                ),
+            // 3) Sponsored section at the bottom
+            if (i == sponsoredIndex) {
+              return sponsoredAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (e, _) => const SizedBox.shrink(),
+                data: (items) {
+                  if (items.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16, bottom: 8),
+                        child: Text(
+                          'Sponsored on Home',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      ...items.take(5).map(
+                            (e) => Card(
+                              child: ListTile(
+                                leading: const Icon(Icons.star),
+                                title: Text((e['name'] ?? '').toString()),
+                                subtitle:
+                                    Text((e['categoryId'] ?? '').toString()),
+                                onTap: () {
+                                  // OPTIONAL: later route to details or category
+                                },
+                              ),
+                            ),
+                          ),
+                      // Hidden sponsor tile (not removed) — just keep it disabled:
+                      // If you want it back later, change SizedBox.shrink() to the tile.
+                      entityIdAsync.when(
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                        data: (_) => const SizedBox.shrink(),
+                        // data: (entityId) => PromoteHomeTile(
+                        //   entityId: entityId,
+                        //   apiBaseUrl: apiBaseUrl,
+                        // ),
+                      ),
+                    ],
+                  );
+                },
               );
             }
 
-            // Normal category rows
-            final c = cats[i];
-            return ListTile(
-              leading: Text(c.emoji, style: const TextStyle(fontSize: 22)),
-              title: Text(c.title),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                ref.read(selectedCategoryProvider.notifier).state = c;
-
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const EntitiesScreen()),
-                );
-              },
-            );
+            return const SizedBox.shrink();
           },
         ),
       ),

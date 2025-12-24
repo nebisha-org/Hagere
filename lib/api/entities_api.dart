@@ -6,6 +6,22 @@ class EntitiesApi {
 
   final String baseUrl; // e.g. https://xxxxx.execute-api....amazonaws.com/api
 
+  Future<List<Map<String, dynamic>>> getHomeSponsored() async {
+    final uri = Uri.parse('$baseUrl/entities/home-sponsored');
+
+    final res = await http.get(
+      uri,
+      headers: {'Accept': 'application/json'},
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception(res.body);
+    }
+
+    final decoded = jsonDecode(res.body);
+    return List<Map<String, dynamic>>.from(decoded['items']);
+  }
+
   /// GET /entities?lat=..&lon=..&radiusKm=..&limit=..
   Future<List<Map<String, dynamic>>> fetchEntities({
     required double lat,
