@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../services/payments_api.dart';
 import '../services/checkout_launcher.dart';
 
+const bool kShowHomeSponsor = false;
+
 class PromoteHomeTile extends StatefulWidget {
   const PromoteHomeTile({
     super.key,
@@ -22,6 +24,9 @@ class _PromoteHomeTileState extends State<PromoteHomeTile> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kShowHomeSponsor) {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 24),
       child: InkWell(
@@ -70,10 +75,12 @@ class _PromoteHomeTileState extends State<PromoteHomeTile> {
   }
 
   Future<void> _onPromote() async {
+    debugPrint('PROMOTE_HOME: _onPromote() CALLED');
     setState(() => _loading = true);
     try {
       final api = PaymentsApi(baseUrl: widget.apiBaseUrl);
-
+      debugPrint('PROMOTE_HOME apiBaseUrl = ${widget.apiBaseUrl}');
+      //final api = PaymentsApi(baseUrl:'https://6qipli13v7.execute-api.us-east-2.amazonaws.com/api');
       // ✅ This is the $4.99 flow
       final checkoutUrl = await api.createCheckoutSession(
         entityId: widget.entityId,

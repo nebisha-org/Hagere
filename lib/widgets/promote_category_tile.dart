@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/payments_api.dart';
 import '../services/checkout_launcher.dart';
 
+const bool kShowHomeSponsor = false;
+
 class PromoteCategoryTile extends StatefulWidget {
   const PromoteCategoryTile({
     super.key,
@@ -23,6 +25,9 @@ class _PromoteCategoryTileState extends State<PromoteCategoryTile> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kShowHomeSponsor) {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 24),
       child: InkWell(
