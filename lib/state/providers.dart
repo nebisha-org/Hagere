@@ -18,7 +18,8 @@ const apiBaseUrl = 'https://6qipli13v7.execute-api.us-east-2.amazonaws.com/api';
 /// API
 /// -------------------------------
 final entitiesApiProvider = Provider<EntitiesApi>((ref) {
-  return EntitiesApi(apiBaseUrl);
+  //return EntitiesApi(apiBaseUrl);
+  return EntitiesApi(baseUrl: apiBaseUrl);
 });
 
 /// -------------------------------

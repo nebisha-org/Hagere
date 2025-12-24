@@ -6,14 +6,14 @@ class PaymentsApi {
   PaymentsApi({required this.baseUrl});
 
   final String
-      baseUrl; // e.g. https://xxxx.execute-api.region.amazonaws.com/api
+      baseUrl; // ex: https://xxxxx.execute-api.us-east-2.amazonaws.com/api
 
   Future<Uri> createCheckoutSession({
     required String entityId,
     required String promotionTier, // "homeSponsored" or "categoryFeatured"
     String? categoryId,
   }) async {
-    final uri = Uri.parse('$baseUrl/checkout');
+    final uri = Uri.parse('$baseUrl/payments/checkout-session');
 
     final body = <String, dynamic>{
       'entityId': entityId,
@@ -21,33 +21,86 @@ class PaymentsApi {
       if (categoryId != null) 'categoryId': categoryId,
     };
 
-    debugPrint('CHECKOUT URI => $uri');
+    debugPrint('CHECKOUT POST => $uri');
     debugPrint('CHECKOUT BODY => ${jsonEncode(body)}');
 
     final res = await http.post(
       uri,
-      headers: const {'Content-Type': 'application/json'},
+      headers: const {"Content-Type": "application/json"},
       body: jsonEncode(body),
     );
 
-    debugPrint('STATUS => ${res.statusCode}');
-    debugPrint('RESP => ${res.body}');
+    debugPrint('CHECKOUT RES status=${res.statusCode} body=${res.body}');
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception(
           'Checkout session failed (${res.statusCode}): ${res.body}');
     }
 
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
-    final checkoutUrl = data['checkoutUrl'];
+    final decoded = jsonDecode(res.body);
+    final url = (decoded is Map && decoded['url'] is String)
+        ? decoded['url'] as String
+        : null;
 
-    if (checkoutUrl is! String || checkoutUrl.isEmpty) {
-      throw Exception('Missing checkoutUrl in response: ${res.body}');
+    if (url == null || url.trim().isEmpty) {
+      throw Exception('Backend did not return checkout url: ${res.body}');
     }
 
-    return Uri.parse(checkoutUrl);
+    return Uri.parse(url);
   }
 }
+
+
+// import 'dart:convert';
+// import 'package:flutter/foundation.dart';
+// import 'package:http/http.dart' as http;
+
+// class PaymentsApi {
+//   PaymentsApi({required this.baseUrl});
+
+//   final String
+//       baseUrl; // e.g. https://xxxx.execute-api.region.amazonaws.com/api
+
+//   Future<Uri> createCheckoutSession({
+//     required String entityId,
+//     required String promotionTier, // "homeSponsored" or "categoryFeatured"
+//     String? categoryId,
+//   }) async {
+//     final uri = Uri.parse('$baseUrl/checkout');
+
+//     final body = <String, dynamic>{
+//       'entityId': entityId,
+//       'promotionTier': promotionTier,
+//       if (categoryId != null) 'categoryId': categoryId,
+//     };
+
+//     debugPrint('CHECKOUT URI => $uri');
+//     debugPrint('CHECKOUT BODY => ${jsonEncode(body)}');
+
+//     final res = await http.post(
+//       uri,
+//       headers: const {'Content-Type': 'application/json'},
+//       body: jsonEncode(body),
+//     );
+
+//     debugPrint('STATUS => ${res.statusCode}');
+//     debugPrint('RESP => ${res.body}');
+
+//     if (res.statusCode < 200 || res.statusCode >= 300) {
+//       throw Exception(
+//           'Checkout session failed (${res.statusCode}): ${res.body}');
+//     }
+
+//     final data = jsonDecode(res.body) as Map<String, dynamic>;
+//     final checkoutUrl = data['checkoutUrl'];
+
+//     if (checkoutUrl is! String || checkoutUrl.isEmpty) {
+//       throw Exception('Missing checkoutUrl in response: ${res.body}');
+//     }
+
+//     return Uri.parse(checkoutUrl);
+//   }
+// }
 
 
 
