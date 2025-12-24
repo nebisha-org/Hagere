@@ -24,7 +24,8 @@ android {
         applicationId = "com.example.agerelige_flutter_client"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        //minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = 1 //flutter.versionCode
         versionName = "0.1.0" //flutter.versionName
