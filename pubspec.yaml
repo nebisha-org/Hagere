@@ -7,33 +7,41 @@ environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
+  flutter:
+    sdk: flutter
+
   shared_preferences: ^2.3.2
   uuid: ^4.5.1
   http: ^1.2.2
   url_launcher: ^6.2.6
-
   flutter_riverpod: ^2.5.1
   location: ^6.0.2
-
-  flutter:
-    sdk: flutter
-  #location : ^5.0.0
   dio: ^5.7.0
   cached_network_image: ^3.4.1
   flutter_hooks: ^0.20.5
   hooks_riverpod: ^2.5.1
 
-  # 🔥 Firebase (all aligned with latest gen)
-  firebase_core: ^4.2.1        # latest core :contentReference[oaicite:0]{index=0}
-  firebase_auth: ^6.1.2        # latest auth :contentReference[oaicite:1]{index=1}
-  cloud_firestore: ^6.1.0      # latest firestore :contentReference[oaicite:2]{index=2}
-  firebase_messaging: ^16.0.4  # latest messaging :contentReference[oaicite:3]{index=3}
-  firebase_analytics: ^12.0.4  # latest analytics :contentReference[oaicite:4]{index=4}
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  cloud_firestore: ^6.1.0
+  firebase_messaging: ^16.0.4
+  firebase_analytics: ^12.0.4
+
+  geocoding: ^4.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon/1024X1024.png
+  remove_alpha_ios: true

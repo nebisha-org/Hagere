@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/category.dart';
 import '../state/category_providers.dart';
 import '../state/providers.dart';
+import '../state/sponsored_providers.dart';
 
 class AddListingScreen extends ConsumerStatefulWidget {
   const AddListingScreen({super.key});
@@ -181,6 +182,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     );
 
     _log('CHECKOUT: launchUrl ok=$ok');
+    ref.invalidate(homeSponsoredProvider);
 
     if (!ok) {
       throw Exception('Could not open Stripe: $checkoutUrl');

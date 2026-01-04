@@ -38,8 +38,8 @@ class PaymentsApi {
     }
 
     final decoded = jsonDecode(res.body);
-    final url = (decoded is Map && decoded['url'] is String)
-        ? decoded['url'] as String
+    final url = (decoded is Map && decoded['checkoutUrl'] is String)
+        ? decoded['checkoutUrl'] as String
         : null;
 
     if (url == null || url.trim().isEmpty) {

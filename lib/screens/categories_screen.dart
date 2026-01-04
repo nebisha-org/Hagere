@@ -16,6 +16,7 @@ class CategoriesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.invalidate(homeSponsoredProvider);
     final cats = ref.watch(categoriesProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
@@ -71,7 +72,7 @@ class CategoriesScreen extends ConsumerWidget {
                 loading: () => const SizedBox.shrink(),
                 error: (e, _) => const SizedBox.shrink(),
                 data: (items) {
-                  if (items.isEmpty) return const SizedBox.shrink();
+                  //if (items.isEmpty) return const SizedBox.shrink();
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/providers.dart';
 import '../utils/geo.dart';
 import '../state/category_providers.dart';
+import '../state/location_name_provider.dart';
 
 import 'add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
@@ -11,10 +12,13 @@ import 'package:agerelige_flutter_client/widgets/promote_category_tile.dart';
 
 class EntitiesScreen extends ConsumerWidget {
   const EntitiesScreen({super.key});
+  static const showAddListing = false;
+  static const showPromote = false;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final loc = ref.watch(userLocationProvider);
+    final locNameAsync = ref.watch(locationNameProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
 
@@ -35,10 +39,18 @@ class EntitiesScreen extends ConsumerWidget {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'LOC: ${loc.latitude?.toStringAsFixed(6)}, '
-                    '${loc.longitude?.toStringAsFixed(6)}',
+                  locNameAsync.when(
+                    loading: () => const Text('Finding your area...'),
+                    error: (e, _) => const Text('Near you'),
+                    data: (name) => Text(
+                      name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
+                  // Text(
+                  //   'LOC: ${loc.latitude?.toStringAsFixed(6)}, '
+                  //   '${loc.longitude?.toStringAsFixed(6)}',
+                  // ),
                   const SizedBox(height: 12),
                   Expanded(
                     child: ref.watch(entitiesProvider).when(
@@ -51,8 +63,11 @@ class EntitiesScreen extends ConsumerWidget {
                             ),
                           ),
                           data: (items) {
+                            const extra =
+                                (EntitiesScreen.showAddListing ? 1 : 0) +
+                                    (EntitiesScreen.showPromote ? 1 : 0);
                             return ListView.separated(
-                              itemCount: items.length + 2,
+                              itemCount: items.length + extra,
                               separatorBuilder: (_, __) =>
                                   const Divider(height: 1),
                               itemBuilder: (_, i) {
@@ -78,7 +93,6 @@ class EntitiesScreen extends ConsumerWidget {
                                   if (categoryId.isEmpty) {
                                     return const SizedBox.shrink();
                                   }
-
                                   return entityIdAsync.when(
                                     loading: () => const Padding(
                                       padding:
@@ -105,7 +119,10 @@ class EntitiesScreen extends ConsumerWidget {
                                 // NORMAL ENTITY ROW
                                 // -----------------------------
                                 final e = items[i];
-
+                                final phone =
+                                    (e['contactPhone'] ?? e['phone'] ?? '')
+                                        .toString()
+                                        .trim();
                                 final lat = extractCoord(e, 'lat') ??
                                     toDouble(e['latitude']);
                                 final lon = extractCoord(e, 'lon') ??
@@ -136,7 +153,11 @@ class EntitiesScreen extends ConsumerWidget {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(e['address']?.toString() ?? ''),
+                                      if ((e['address']?.toString() ?? '')
+                                          .trim()
+                                          .isNotEmpty)
+                                        Text(e['address'].toString()),
+                                      if (phone.isNotEmpty) Text(phone),
                                       const SizedBox(height: 2),
                                       Text(
                                         distanceText,
