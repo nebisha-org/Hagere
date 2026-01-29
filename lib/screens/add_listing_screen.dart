@@ -1,5 +1,5 @@
+import '../config/env.dart';
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -9,12 +9,14 @@ import '../models/category.dart';
 import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
+import 'package:flutter/foundation.dart' as foundation;
+
 
 class AddListingScreen extends ConsumerStatefulWidget {
   const AddListingScreen({super.key});
   static const routeName = '/add-listing';
 
-  @override
+  @override  
   ConsumerState<AddListingScreen> createState() => _AddListingScreenState();
 }
 
@@ -93,7 +95,6 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     }
 
     final uri = Uri.parse('$apiBaseUrl/entities');
-
     final body = <String, dynamic>{
       "categoryId": category.id,
       "name": _nameCtrl.text.trim(),
@@ -123,7 +124,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     }
 
     final decoded = jsonDecode(res.body);
-    final id = decoded['id'];
+    final id = decoded['id'] ?? decoded['entityId'] ?? decoded['SK'];
 
     if (id == null || (id is String && id.trim().isEmpty)) {
       throw Exception('Create entity returned no id: ${res.body}');
@@ -183,6 +184,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     _log('CHECKOUT: launchUrl ok=$ok');
     ref.invalidate(homeSponsoredProvider);
+    debugPrint("CHECKOUT URL => $checkoutUrl");
 
     if (!ok) {
       throw Exception('Could not open Stripe: $checkoutUrl');

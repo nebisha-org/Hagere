@@ -15,13 +15,21 @@ double? extractCoord(Map<String, dynamic> e, String key) {
   final loc = e['location'];
 
   // Normal API shape: location.lat / location.lon
-  if (loc is Map && loc[key] != null) {
-    return toDouble(loc[key]);
+  if (loc is Map) {
+    if (loc[key] != null) {
+      return toDouble(loc[key]);
+    }
+    if (key == 'lon' && loc['lng'] != null) {
+      return toDouble(loc['lng']);
+    }
   }
 
   // Fallback if API ever returns flat lat/lon
   if (e[key] != null) {
     return toDouble(e[key]);
+  }
+  if (key == 'lon' && e['lng'] != null) {
+    return toDouble(e['lng']);
   }
 
   return null;

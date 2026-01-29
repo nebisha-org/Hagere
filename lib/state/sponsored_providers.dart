@@ -4,6 +4,6 @@ import 'providers.dart';
 
 final homeSponsoredProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final api = EntitiesApi(baseUrl: apiBaseUrl);
-  return api.getHomeSponsored();
+      final api = EntitiesApi();
+    return api.getHomeSponsored();
 });

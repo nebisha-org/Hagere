@@ -66,7 +66,7 @@ class PaymentsApi {
 //     required String promotionTier, // "homeSponsored" or "categoryFeatured"
 //     String? categoryId,
 //   }) async {
-//     final uri = Uri.parse('$baseUrl/checkout');
+//     final uri = Uri.parse('$apiBaseUrl/checkout');
 
 //     final body = <String, dynamic>{
 //       'entityId': entityId,
@@ -118,7 +118,7 @@ class PaymentsApi {
 //     required String promotionTier, // "homeSponsored" or "categoryFeatured"
 //     String? categoryId, // required if categoryFeatured
 //   }) async {
-//     final uri = Uri.parse('$baseUrl/checkout');
+//     final uri = Uri.parse('$apiBaseUrl/checkout');
 //     print('CHECKOUT URI => $uri');
 
 //     final body = <String, dynamic>{

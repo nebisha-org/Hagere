@@ -1,3 +1,4 @@
+import '../config/env.dart';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../models/user.dart';
@@ -10,9 +11,8 @@ class ApiClient {
                 connectTimeout: const Duration(seconds: 15),
                 receiveTimeout: const Duration(seconds: 20)));
 
-  static const String _baseUrl =
-      'https://6qipli13v7.execute-api.us-east-2.amazonaws.com/api';
-
+  final _baseUrl = apiBaseUrl;
+  
   final Dio _dio;
 
   /// GET /users -> {"users": [ ... ]}

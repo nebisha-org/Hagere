@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 
-import 'providers.dart'; // where userLocationProvider lives
+import 'providers.dart';
 
 final locationNameProvider = FutureProvider<String>((ref) async {
   final loc = ref.watch(userLocationProvider);

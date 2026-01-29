@@ -25,7 +25,8 @@ android {
         targetSdk = 35
 
         // MUST increase every upload
-        versionCode = (System.getenv("BUILD_NUMBER") ?: "1").toInt()
+        //versionCode = (System.getenv("BUILD_NUMBER") ?: "1").toInt()
+        versionCode = (System.currentTimeMillis() / 1000).toInt()
         versionName = "0.1.0"
     }
 

@@ -10,6 +10,7 @@ import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
 // keep import even if hidden, no harm
 import 'package:agerelige_flutter_client/widgets/promote_home_tile.dart';
+import 'package:agerelige_flutter_client/screens/places_v2_list_screen.dart';
 
 class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
@@ -47,12 +48,50 @@ class CategoriesScreen extends ConsumerWidget {
                 leading: Text(c.emoji, style: const TextStyle(fontSize: 22)),
                 title: Text(c.title),
                 trailing: const Icon(Icons.chevron_right),
+                // onTap: () {
+                //   ref.read(selectedCategoryProvider.notifier).state = c;
+                //   Navigator.of(context).push(
+                //     MaterialPageRoute(builder: (_) => const EntitiesScreen()),
+                //   );
+                // },
+                // onTap: () {
+                //   // keep this if you still want the old selection stored
+                //   ref.read(selectedCategoryProvider.notifier).state = c;
+
+                //   // TEMP: route categories -> new Places list (safe additive)
+                //   Navigator.of(context).push(
+                //     MaterialPageRoute(
+                //       builder: (_) => const PlacesV2ListScreen(cityId: 'dc'),
+                //     ),
+                //   );
+                // },
                 onTap: () {
                   ref.read(selectedCategoryProvider.notifier).state = c;
+
+                  // Don't block navigation on location permission flow.
+                  Future(() async {
+                    try {
+                      await ref
+                          .read(locationControllerProvider)
+                          .ensureLocationReady();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString())),
+                        );
+                      }
+                    }
+                  });
+
+                  debugPrint('CATEGORY=${c.id} ${c.title}');
+                  debugPrint('GOING TO PlacesV2ListScreen');
+                  if (!context.mounted) return;
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const EntitiesScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const PlacesV2ListScreen(),
+                    ),
                   );
-                },
+                }
               );
             }
 

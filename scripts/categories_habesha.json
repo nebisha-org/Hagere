@@ -1,0 +1,124 @@
+[
+  {
+    "id": "restaurants",
+    "label": "Restaurants",
+    "queries": [
+      "ethiopian restaurant",
+      "eritrean restaurant",
+      "habesha restaurant",
+      "injera restaurant"
+    ]
+  },
+  {
+    "id": "markets",
+    "label": "Markets & Grocery",
+    "queries": [
+      "ethiopian market",
+      "eritrean market",
+      "ethiopian grocery",
+      "injera",
+      "teff",
+      "berbere"
+    ]
+  },
+  {
+    "id": "coffee",
+    "label": "Coffee & Cafes",
+    "queries": [
+      "ethiopian coffee",
+      "habesha cafe",
+      "coffee ceremony"
+    ]
+  },
+  {
+    "id": "events",
+    "label": "Events & Entertainment",
+    "queries": [
+      "ethiopian concert",
+      "eritrean concert",
+      "habesha event hall",
+      "ethiopian cultural center"
+    ]
+  },
+  {
+    "id": "faith",
+    "label": "Faith & Community",
+    "queries": [
+      "ethiopian orthodox church",
+      "eritrean orthodox church",
+      "tewahedo church",
+      "ethiopian church",
+      "eritrean church"
+    ]
+  },
+  {
+    "id": "legal",
+    "label": "Legal & Immigration",
+    "queries": [
+      "ethiopian immigration lawyer",
+      "eritrean immigration lawyer",
+      "amharic lawyer",
+      "tigrinya lawyer"
+    ]
+  },
+  {
+    "id": "tax",
+    "label": "Tax & Accounting",
+    "queries": [
+      "ethiopian tax services",
+      "eritrean tax services",
+      "amharic cpa",
+      "tigrinya cpa"
+    ]
+  },
+  {
+    "id": "translation",
+    "label": "Translation & Language",
+    "queries": [
+      "amharic translator",
+      "tigrinya translator",
+      "ethiopian translation services"
+    ]
+  },
+  {
+    "id": "travel",
+    "label": "Travel & Cargo",
+    "queries": [
+      "ethiopian travel agency",
+      "eritrean travel agency",
+      "cargo to ethiopia",
+      "cargo to eritrea"
+    ]
+  },
+  {
+    "id": "remittance",
+    "label": "Remittance & Money Transfer",
+    "queries": [
+      "money transfer ethiopia",
+      "money transfer eritrea",
+      "remittance ethiopia",
+      "remittance eritrea"
+    ]
+  },
+  {
+    "id": "health",
+    "label": "Clinics & Wellness",
+    "queries": [
+      "ethiopian clinic",
+      "eritrean clinic",
+      "amharic doctor",
+      "tigrinya doctor"
+    ]
+  },
+  {
+    "id": "beauty",
+    "label": "Beauty & Grooming",
+    "queries": [
+      "ethiopian hair braiding",
+      "eritrean hair braiding",
+      "ethiopian barber",
+      "eritrean barber",
+      "habesha salon"
+    ]
+  }
+]

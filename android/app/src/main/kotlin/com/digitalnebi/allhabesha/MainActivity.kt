@@ -1,4 +1,4 @@
-package com.example.agerelige_flutter_client
+package com.digitalnebi.allhabesha
 
 import io.flutter.embedding.android.FlutterActivity
 

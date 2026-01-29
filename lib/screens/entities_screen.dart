@@ -1,11 +1,11 @@
+import '../config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../state/providers.dart';
 import '../utils/geo.dart';
 import '../state/category_providers.dart';
 import '../state/location_name_provider.dart';
-
+import 'package:location/location.dart';
 import 'add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
 import 'package:agerelige_flutter_client/widgets/promote_category_tile.dart';
@@ -108,9 +108,9 @@ class EntitiesScreen extends ConsumerWidget {
                                           Text('Could not load device id: $e'),
                                     ),
                                     data: (entityId) => PromoteCategoryTile(
+                                      apiBaseUrl: apiBaseUrl,
                                       categoryId: categoryId,
                                       entityId: entityId,
-                                      apiBaseUrl: apiBaseUrl,
                                     ),
                                   );
                                 }
@@ -126,7 +126,8 @@ class EntitiesScreen extends ConsumerWidget {
                                 final lat = extractCoord(e, 'lat') ??
                                     toDouble(e['latitude']);
                                 final lon = extractCoord(e, 'lon') ??
-                                    toDouble(e['longitude']);
+                                    toDouble(e['longitude']) ??
+                                    toDouble(e['lng']);
 
                                 String distanceText = '—';
 
