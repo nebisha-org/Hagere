@@ -4,6 +4,11 @@ Date: 2026-01-29
 Owner: Nebyate Endalamaw
 Repo: /Users/nebsha/FlutterProjects/agerelige_flutter_client (branch: v2)
 
+## 📁 AllHabesha repo map
+- Frontend: /Users/nebsha/FlutterProjects/agerelige_flutter_client
+- Backend: /Users/nebsha/FlutterProjects/agerelige-backend
+- Backend v2: /Users/nebsha/FlutterProjects/allhabesha-backend-v2
+
 ## ✅ Current state (what works now)
 - Android emulator runs and shows list data.
 - iOS simulator was fixed for navigation + location permissions flow.
@@ -112,4 +117,3 @@ Start with:
 2) Run ingestion script with `--max-pages 1`.
 3) Validate DynamoDB counts per city.
 4) If needed, expand to `--max-pages 2`.
-
