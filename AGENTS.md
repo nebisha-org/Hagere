@@ -2,12 +2,12 @@
 
 Date: 2026-01-29
 Owner: Nebyate Endalamaw
-Repo: /Users/nebsha/FlutterProjects/agerelige_flutter_client (branch: v2)
+Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch: v2)
 
 ## 📁 AllHabesha repo map
-- Frontend: /Users/nebsha/FlutterProjects/agerelige_flutter_client
-- Backend: /Users/nebsha/FlutterProjects/agerelige-backend
-- Backend v2: /Users/nebsha/FlutterProjects/allhabesha-backend-v2
+- Frontend: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client
+- Backend: /Users/nebsha/FlutterProjects/AllHabesha/agerelige-backend
+- Backend v2: /Users/nebsha/FlutterProjects/AllHabesha/allhabesha-backend-v2
 
 ## ✅ Current state (what works now)
 - Android emulator runs and shows list data.
