@@ -102,6 +102,26 @@ final categoriesProvider = Provider<List<AppCategory>>((ref) {
         'translation',
       ],
     ),
+    AppCategory(
+      id: 'announcements',
+      title: 'Announcements',
+      emoji: '📢',
+      tags: [
+        'announcement',
+        'announcements',
+        'press release',
+        'pressrelease',
+        'political',
+        'religious',
+        'religion',
+        'church',
+        'mosque',
+        'community',
+        'bulletin',
+        'update',
+        'news',
+      ],
+    ),
   ];
 });
 

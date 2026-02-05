@@ -9,6 +9,8 @@ import 'package:uuid/uuid.dart';
 
 import '../api/entities_api.dart';
 import 'category_providers.dart';
+import '../utils/category_filter.dart';
+import '../models/category.dart';
 
 
 
@@ -131,12 +133,23 @@ class LocationController {
 
     PermissionStatus permission = await _location.hasPermission();
     if (permission == PermissionStatus.denied) {
-      permission = await _location
-          .requestPermission()
-          .timeout(const Duration(seconds: 6));
+      try {
+        permission = await _location
+            .requestPermission()
+            .timeout(const Duration(seconds: 6));
+      } catch (_) {
+        permission = PermissionStatus.denied;
+      }
     }
 
     if (permission == PermissionStatus.deniedForever) {
+      if (kDebugMode) {
+        final fallback = await _loadFallbackLocation();
+        if (fallback != null) {
+          ref.read(userLocationProvider.notifier).state = fallback;
+          return;
+        }
+      }
       throw Exception(
         'Location permission permanently denied. Enable it in iOS Settings > Privacy > Location Services.',
       );
@@ -144,6 +157,13 @@ class LocationController {
 
     if (permission != PermissionStatus.granted &&
         permission != PermissionStatus.grantedLimited) {
+      if (kDebugMode) {
+        final fallback = await _loadFallbackLocation();
+        if (fallback != null) {
+          ref.read(userLocationProvider.notifier).state = fallback;
+          return;
+        }
+      }
       throw Exception('Location permission not granted: $permission');
     }
 
@@ -189,43 +209,22 @@ final currentEntityIdProvider = FutureProvider<String>((ref) async {
   return id;
 });
 
-String _norm(dynamic v) => (v ?? '').toString().trim().toLowerCase();
+final availableCategoriesProvider =
+    Provider<AsyncValue<List<AppCategory>>>((ref) {
+  final cats = ref.watch(categoriesProvider);
+  final rawAsync = ref.watch(entitiesRawProvider);
 
-List<String> _extractTags(dynamic tags) {
-  if (tags is List) {
-    return tags.map((e) => _norm(e)).where((s) => s.isNotEmpty).toList();
-  }
-  return const [];
-}
+  return rawAsync.whenData((items) {
+    if (items.isEmpty) return <AppCategory>[];
 
-bool _matchesByTagsOrText(Map<String, dynamic> e, List<String> catTags) {
-  if (catTags.isEmpty) return true;
-
-  final entityTags = _extractTags(e['tags']);
-  if (entityTags.isNotEmpty) {
-    for (final t in catTags) {
-      final nt = _norm(t);
-      if (nt.isNotEmpty && entityTags.contains(nt)) return true;
+    final filtered = <AppCategory>[];
+    for (final cat in cats) {
+      final hasAny = items.any((e) => matchesCategoryForEntity(e, cat));
+      if (hasAny) filtered.add(cat);
     }
-  }
-
-  final hay = [
-    _norm(e['subtype']),
-    _norm(e['type']),
-    _norm(e['categoryId']),
-    _norm(e['category']),
-    _norm(e['name']),
-    _norm(e['title']),
-    _norm(e['address']),
-  ].join(' ');
-
-  for (final t in catTags) {
-    final nt = _norm(t);
-    if (nt.isNotEmpty && hay.contains(nt)) return true;
-  }
-
-  return false;
-}
+    return filtered;
+  });
+});
 
 String _regionKey(double lat, double lon) {
   return '${lat.toStringAsFixed(2)}:${lon.toStringAsFixed(2)}';
@@ -267,7 +266,8 @@ final entitiesProvider =
 
   return rawAsync.whenData((items) {
     if (selectedCategory == null) return items;
-    final catTags = selectedCategory.tags;
-    return items.where((e) => _matchesByTagsOrText(e, catTags)).toList();
+    return items
+        .where((e) => matchesCategoryForEntity(e, selectedCategory))
+        .toList();
   });
 });

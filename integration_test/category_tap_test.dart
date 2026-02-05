@@ -42,6 +42,11 @@ Future<void> _tapAllCategories(WidgetTester tester) async {
     of: find.byType(ListTile),
     matching: find.byIcon(Icons.chevron_right),
   );
+  final end = DateTime.now().add(const Duration(seconds: 120));
+  while (DateTime.now().isBefore(end) &&
+      chevrons.evaluate().isEmpty) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
   final count = chevrons.evaluate().length;
   if (count == 0) {
     throw Exception('No category tiles found.');
