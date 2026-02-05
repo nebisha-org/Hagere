@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state/providers.dart';
+import 'place_detail_screen.dart';
 
 class Entity {
   final String name;
@@ -102,17 +103,16 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                 ),
               ),
               data: (items) {
-                final entities =
-                    items.map((e) => Entity.fromJson(e)).toList();
-                if (entities.isEmpty) {
+                if (items.isEmpty) {
                   return const Center(child: Text('No places found'));
                 }
 
                 return ListView.separated(
-                  itemCount: entities.length,
+                  itemCount: items.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, i) {
-                    final e = entities[i];
+                    final raw = items[i];
+                    final e = Entity.fromJson(raw);
 
                     return ListTile(
                       title: Text(e.name),
@@ -129,6 +129,11 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                               icon: const Icon(Icons.phone),
                               onPressed: () => _callPhone(e.phone),
                             ),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => PlaceDetailScreen(entity: raw),
+                        ),
+                      ),
                     );
                   },
                 );
