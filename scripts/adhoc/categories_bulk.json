@@ -1,0 +1,245 @@
+[
+  {
+    "id": "restaurants",
+    "label": "Restaurants",
+    "queries": [
+      "ethiopian restaurant",
+      "eritrean restaurant",
+      "habesha restaurant",
+      "injera restaurant",
+      "african restaurant",
+      "east african restaurant",
+      "restaurant",
+      "cafe"
+    ]
+  },
+  {
+    "id": "markets",
+    "label": "Markets & Grocery",
+    "queries": [
+      "ethiopian market",
+      "eritrean market",
+      "ethiopian grocery",
+      "grocery store",
+      "supermarket",
+      "market",
+      "butcher",
+      "bakery",
+      "halal market"
+    ]
+  },
+  {
+    "id": "coffee",
+    "label": "Coffee & Cafes",
+    "queries": [
+      "ethiopian coffee",
+      "habesha cafe",
+      "coffee ceremony",
+      "coffee shop",
+      "cafe",
+      "tea house"
+    ]
+  },
+  {
+    "id": "events",
+    "label": "Events & Entertainment",
+    "queries": [
+      "ethiopian concert",
+      "eritrean concert",
+      "habesha event hall",
+      "ethiopian cultural center",
+      "event hall",
+      "concert hall",
+      "live music",
+      "festival",
+      "theater"
+    ]
+  },
+  {
+    "id": "faith",
+    "label": "Faith & Community",
+    "queries": [
+      "ethiopian orthodox church",
+      "eritrean orthodox church",
+      "tewahedo church",
+      "ethiopian church",
+      "eritrean church",
+      "orthodox church",
+      "church",
+      "mosque",
+      "catholic church"
+    ]
+  },
+  {
+    "id": "legal",
+    "label": "Legal & Immigration",
+    "queries": [
+      "ethiopian immigration lawyer",
+      "eritrean immigration lawyer",
+      "amharic lawyer",
+      "tigrinya lawyer",
+      "immigration lawyer",
+      "law firm",
+      "attorney"
+    ]
+  },
+  {
+    "id": "tax",
+    "label": "Tax & Accounting",
+    "queries": [
+      "ethiopian tax services",
+      "eritrean tax services",
+      "amharic cpa",
+      "tigrinya cpa",
+      "tax services",
+      "accountant",
+      "CPA",
+      "bookkeeping"
+    ]
+  },
+  {
+    "id": "translation",
+    "label": "Translation & Language",
+    "queries": [
+      "amharic translator",
+      "tigrinya translator",
+      "ethiopian translation services",
+      "translator",
+      "translation services",
+      "interpreting services"
+    ]
+  },
+  {
+    "id": "travel",
+    "label": "Travel & Cargo",
+    "queries": [
+      "ethiopian travel agency",
+      "eritrean travel agency",
+      "cargo to ethiopia",
+      "cargo to eritrea",
+      "travel agency",
+      "airline ticketing",
+      "shipping",
+      "cargo services"
+    ]
+  },
+  {
+    "id": "remittance",
+    "label": "Remittance & Money Transfer",
+    "queries": [
+      "money transfer ethiopia",
+      "money transfer eritrea",
+      "remittance ethiopia",
+      "remittance eritrea",
+      "money transfer",
+      "remittance",
+      "currency exchange",
+      "wire transfer"
+    ]
+  },
+  {
+    "id": "health",
+    "label": "Clinics & Wellness",
+    "queries": [
+      "ethiopian clinic",
+      "eritrean clinic",
+      "amharic doctor",
+      "tigrinya doctor",
+      "clinic",
+      "doctor",
+      "dentist",
+      "pharmacy",
+      "urgent care"
+    ]
+  },
+  {
+    "id": "beauty",
+    "label": "Beauty & Grooming",
+    "queries": [
+      "ethiopian hair braiding",
+      "eritrean hair braiding",
+      "ethiopian barber",
+      "eritrean barber",
+      "habesha salon",
+      "hair salon",
+      "barber",
+      "beauty salon",
+      "spa",
+      "nail salon"
+    ]
+  },
+  {
+    "id": "rentals",
+    "label": "Rentals & Housing",
+    "queries": [
+      "car rental",
+      "apartment rental",
+      "property management",
+      "real estate agency",
+      "rental listings"
+    ]
+  },
+  {
+    "id": "services",
+    "label": "Services",
+    "queries": [
+      "notary",
+      "insurance agency",
+      "employment agency",
+      "tax preparer",
+      "accounting firm"
+    ]
+  },
+  {
+    "id": "shopping",
+    "label": "Shopping",
+    "queries": [
+      "shopping mall",
+      "shopping center",
+      "electronics store",
+      "clothing store",
+      "marketplace"
+    ]
+  },
+  {
+    "id": "education",
+    "label": "Education",
+    "queries": [
+      "language school",
+      "tutoring",
+      "school",
+      "college",
+      "training center"
+    ]
+  },
+  {
+    "id": "fitness",
+    "label": "Fitness",
+    "queries": [
+      "gym",
+      "fitness center",
+      "yoga studio",
+      "martial arts"
+    ]
+  },
+  {
+    "id": "entertainment",
+    "label": "Entertainment",
+    "queries": [
+      "cinema",
+      "movie theater",
+      "museum",
+      "art gallery"
+    ]
+  },
+  {
+    "id": "community",
+    "label": "Community",
+    "queries": [
+      "community center",
+      "cultural center",
+      "association",
+      "nonprofit organization"
+    ]
+  }
+]

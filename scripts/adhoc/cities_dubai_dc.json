@@ -1,0 +1,16 @@
+[
+  {
+    "city_id": "us_washington_dc",
+    "city": "Washington",
+    "region": "DC",
+    "country": "United States",
+    "country_code": "US"
+  },
+  {
+    "city_id": "ae_dubai",
+    "city": "Dubai",
+    "region": "",
+    "country": "United Arab Emirates",
+    "country_code": "AE"
+  }
+]

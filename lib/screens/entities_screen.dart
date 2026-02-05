@@ -27,7 +27,10 @@ class EntitiesScreen extends ConsumerWidget {
         title: Text(selectedCategory?.title ?? 'Nearby'),
         actions: [
           IconButton(
-            onPressed: () => ref.invalidate(entitiesProvider),
+            onPressed: () {
+              ref.read(entitiesRefreshProvider.notifier).state++;
+              ref.invalidate(entitiesRawProvider);
+            },
             icon: const Icon(Icons.refresh),
           ),
         ],

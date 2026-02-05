@@ -30,15 +30,17 @@ class EntitiesApi {
     required double lat,
     required double lon,
     double radiusKm = 100,
-    int limit = 50,
+    int? limit,
     bool serverSideGeo = false,
   }) async {
     final query = <String, String>{
       'lat': lat.toString(),
       'lon': lon.toString(),
       'radiusKm': radiusKm.toString(),
-      'limit': limit.toString(),
     };
+    if (limit != null) {
+      query['limit'] = limit.toString();
+    }
     if (serverSideGeo) {
       query['serverSideGeo'] = 'true';
     }
@@ -46,14 +48,17 @@ class EntitiesApi {
     final uri =
         Uri.parse('$apiBaseUrl/entities').replace(queryParameters: query);
 
+    if (kDebugMode) {
+      debugPrint('[EntitiesApi] GET $uri');
+    }
+    final sw = Stopwatch()..start();
     final res = await http.get(uri, headers: {'Accept': 'application/json'});
+    if (kDebugMode) {
+      debugPrint('[EntitiesApi] status=${res.statusCode} ${sw.elapsedMilliseconds}ms');
+    }
     if (res.statusCode != 200) throw Exception(res.body);
 
     final decoded = jsonDecode(res.body);
-
-    debugPrint('>+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++');
-    debugPrint('$decoded');
-    debugPrint('<+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++');
 
     final List rawItems = decoded is List
         ? decoded
@@ -76,12 +81,13 @@ class EntitiesApi {
     required double lat,
     required double lon,
     double radiusKm = 100,
-    int limit = 50,
+    int? limit,
     Duration ttl = const Duration(hours: 12),
     bool forceRefresh = false,
   }) async {
     final box = Hive.box(EntitiesCache.boxName);
-    final cacheKey = 'entities::$regionKey::r$radiusKm::l$limit';
+    final limitKey = limit?.toString() ?? 'all';
+    final cacheKey = 'entities::$regionKey::r$radiusKm::l$limitKey';
 
     final cached = EntitiesCache.read(box, cacheKey);
     if (!forceRefresh && cached != null && EntitiesCache.isFresh(cached, ttl)) {
@@ -92,20 +98,31 @@ class EntitiesApi {
           .toList();
     }
 
-    final items = await fetchEntities(
-      lat: lat,
-      lon: lon,
-      radiusKm: radiusKm,
-      limit: limit,
-    );
+    try {
+      final items = await fetchEntities(
+        lat: lat,
+        lon: lon,
+        radiusKm: radiusKm,
+        limit: limit,
+      );
 
-    await EntitiesCache.write(
-      box,
-      cacheKey,
-      itemsJson: items,
-      etag: null,
-    );
+      await EntitiesCache.write(
+        box,
+        cacheKey,
+        itemsJson: items,
+        etag: null,
+      );
 
-    return items;
+      return items;
+    } catch (e) {
+      if (cached != null) {
+        final items = EntitiesCache.items(cached);
+        return items
+            .whereType<Map>()
+            .map<Map<String, dynamic>>((item) => item.cast<String, dynamic>())
+            .toList();
+      }
+      rethrow;
+    }
   }
 }
