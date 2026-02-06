@@ -13,6 +13,7 @@ import 'category_providers.dart';
 import '../utils/category_filter.dart';
 import '../models/category.dart';
 import '../models/carousel_item.dart';
+import 'location_name_provider.dart';
 
 const String _debugFallbackLatStr =
     String.fromEnvironment('DEBUG_FALLBACK_LAT', defaultValue: '25.2048');
@@ -42,8 +43,50 @@ final carouselItemsProvider =
     FutureProvider.autoDispose<List<CarouselItem>>((ref) async {
   ref.watch(entitiesRefreshProvider);
   final api = ref.watch(carouselApiProvider);
-  return api.fetchCarousel();
+  String? city;
+  String? state;
+
+  try {
+    final name = await ref.watch(locationNameProvider.future);
+    if (name.isNotEmpty && name.toLowerCase() != 'near you') {
+      final parts = name.split(',');
+      if (parts.isNotEmpty) {
+        city = _normalizeCity(parts[0]);
+      }
+      if (parts.length > 1) {
+        state = _normalizeState(parts[1]);
+      }
+    }
+  } catch (_) {
+    // ignore location name errors and fetch global carousel items
+  }
+
+  return api.fetchCarousel(city: city, state: state);
 });
+
+String? _normalizeCity(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  return trimmed.toLowerCase();
+}
+
+String? _normalizeState(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  const stateMap = {
+    'district of columbia': 'DC',
+    'washington, d.c.': 'DC',
+    'd.c.': 'DC',
+    'dc': 'DC',
+    'virginia': 'VA',
+    'va': 'VA',
+    'maryland': 'MD',
+    'md': 'MD',
+    'dubai': 'Dubai',
+  };
+  final key = trimmed.toLowerCase();
+  return stateMap[key] ?? trimmed;
+}
 
 
 final locationControllerProvider = Provider<LocationController>((ref) {
