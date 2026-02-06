@@ -34,7 +34,7 @@ class Entity {
     return Entity(
       name: name.isEmpty ? '(no name)' : name,
       phone: phone,
-      address: address.isEmpty ? '(no address)' : address,
+      address: address,
     );
   }
 }
@@ -119,8 +119,8 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(e.address),
-                          Text(e.phone.isEmpty ? '(no phone)' : e.phone),
+                          if (e.address.isNotEmpty) Text(e.address),
+                          if (e.phone.isNotEmpty) Text(e.phone),
                         ],
                       ),
                       trailing: e.phone.isEmpty

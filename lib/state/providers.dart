@@ -8,9 +8,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../api/entities_api.dart';
+import '../api/carousel_api.dart';
 import 'category_providers.dart';
 import '../utils/category_filter.dart';
 import '../models/category.dart';
+import '../models/carousel_item.dart';
+
+const String _debugFallbackLatStr =
+    String.fromEnvironment('DEBUG_FALLBACK_LAT', defaultValue: '25.2048');
+const String _debugFallbackLonStr =
+    String.fromEnvironment('DEBUG_FALLBACK_LON', defaultValue: '55.2708');
+
+double _debugFallbackLat() =>
+    double.tryParse(_debugFallbackLatStr) ?? 25.2048;
+double _debugFallbackLon() =>
+    double.tryParse(_debugFallbackLonStr) ?? 55.2708;
 
 
 
@@ -18,9 +30,20 @@ final entitiesApiProvider = Provider<EntitiesApi>((ref) {
   return EntitiesApi();
 });
 
+final carouselApiProvider = Provider<CarouselApi>((ref) {
+  return CarouselApi();
+});
+
 final userLocationProvider = StateProvider<LocationData?>((ref) => null);
 
 final entitiesRefreshProvider = StateProvider<int>((ref) => 0);
+
+final carouselItemsProvider =
+    FutureProvider.autoDispose<List<CarouselItem>>((ref) async {
+  ref.watch(entitiesRefreshProvider);
+  final api = ref.watch(carouselApiProvider);
+  return api.fetchCarousel();
+});
 
 
 final locationControllerProvider = Provider<LocationController>((ref) {
@@ -100,12 +123,6 @@ class LocationController {
   }
 
   Future<LocationData?> _loadFallbackLocation() async {
-    if (kDebugMode) {
-      const debugLat = 25.2048;
-      const debugLon = 55.2708;
-      return _locationFromLatLon(debugLat, debugLon);
-    }
-
     final prefs = await SharedPreferences.getInstance();
     final lat = prefs.getDouble('last_location_lat');
     final lon = prefs.getDouble('last_location_lon');
@@ -113,7 +130,24 @@ class LocationController {
       return _locationFromLatLon(lat, lon);
     }
 
+    if (kDebugMode) {
+      return _locationFromLatLon(_debugFallbackLat(), _debugFallbackLon());
+    }
+
     return null;
+  }
+
+  Future<void> _updateFromLiveLocation({
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    try {
+      final live = await _waitForLocation(timeout: timeout);
+      if (live.latitude == null || live.longitude == null) return;
+      await _saveLastLocation(live);
+      ref.read(userLocationProvider.notifier).state = live;
+    } catch (_) {
+      // ignore background attempt
+    }
   }
 
   Future<void> ensureLocationReady() async {
@@ -147,6 +181,7 @@ class LocationController {
         final fallback = await _loadFallbackLocation();
         if (fallback != null) {
           ref.read(userLocationProvider.notifier).state = fallback;
+          Future(() => _updateFromLiveLocation());
           return;
         }
       }
@@ -161,6 +196,7 @@ class LocationController {
         final fallback = await _loadFallbackLocation();
         if (fallback != null) {
           ref.read(userLocationProvider.notifier).state = fallback;
+          Future(() => _updateFromLiveLocation());
           return;
         }
       }
@@ -183,6 +219,7 @@ class LocationController {
           );
         }
         ref.read(userLocationProvider.notifier).state = fallback;
+        Future(() => _updateFromLiveLocation());
         return;
       }
       throw Exception('Location unavailable (null lat/lon)');

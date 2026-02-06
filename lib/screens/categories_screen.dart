@@ -7,7 +7,7 @@ import '../state/sponsored_providers.dart';
 
 import 'entities_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
-import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
+import 'package:agerelige_flutter_client/widgets/add_listing_carousel.dart';
 // keep import even if hidden, no harm
 import 'package:agerelige_flutter_client/widgets/promote_home_tile.dart';
 import 'package:agerelige_flutter_client/screens/places_v2_list_screen.dart';
@@ -39,6 +39,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final catsAsync = ref.watch(availableCategoriesProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
+    final carouselAsync = ref.watch(carouselItemsProvider);
 
     if (loc == null || loc.latitude == null || loc.longitude == null) {
       return Scaffold(
@@ -96,12 +97,22 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final sponsoredIndex = categoriesCount + 1;
           final totalRows = categoriesCount + 2;
 
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: ListView.separated(
-              itemCount: totalRows,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, i) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              const double rowHeight = 64;
+              const double minCarouselHeight = 140;
+              const double padding = 32; // 16 top + 16 bottom
+              final double available =
+                  constraints.maxHeight - padding - (categoriesCount * rowHeight);
+              final double carouselHeight =
+                  available > minCarouselHeight ? available : minCarouselHeight;
+
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: ListView.separated(
+                  itemCount: totalRows,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, i) {
                 // 1) Category rows
                 if (i < categoriesCount) {
                   final c = cats[i];
@@ -141,11 +152,26 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
                 // 2) Add Listing card
                 if (i == addListingIndex) {
-                  return AddListingCard(
-                    onTap: () => Navigator.of(context).pushNamed(
-                      AddListingScreen.routeName,
+                  return carouselAsync.when(
+                    loading: () => AddListingCarousel(
+                      height: carouselHeight,
+                      onAddTap: () => Navigator.of(context).pushNamed(
+                        AddListingScreen.routeName,
+                      ),
                     ),
-                    subtitle: 'Add your business listing, then promote it.',
+                    error: (_, __) => AddListingCarousel(
+                      height: carouselHeight,
+                      onAddTap: () => Navigator.of(context).pushNamed(
+                        AddListingScreen.routeName,
+                      ),
+                    ),
+                    data: (items) => AddListingCarousel(
+                      height: carouselHeight,
+                      items: items,
+                      onAddTap: () => Navigator.of(context).pushNamed(
+                        AddListingScreen.routeName,
+                      ),
+                    ),
                   );
                 }
 
@@ -200,9 +226,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   );
                 }
 
-                return const SizedBox.shrink();
-              },
-            ),
+                    return const SizedBox.shrink();
+                  },
+                ),
+              );
+            },
           );
         },
       ),

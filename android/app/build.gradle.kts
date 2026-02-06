@@ -14,6 +14,7 @@ plugins {
 }
 
 android {
+    ndkVersion = "28.2.13676358"
     namespace = "com.digitalnebi.allhabesha"
 
     // Compile against latest installed SDK; 35 is enough, 36 is fine if installed.

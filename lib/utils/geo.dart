@@ -19,6 +19,12 @@ double? extractCoord(Map<String, dynamic> e, String key) {
     if (loc[key] != null) {
       return toDouble(loc[key]);
     }
+    if (key == 'lat' && loc['latitude'] != null) {
+      return toDouble(loc['latitude']);
+    }
+    if (key == 'lon' && loc['longitude'] != null) {
+      return toDouble(loc['longitude']);
+    }
     if (key == 'lon' && loc['lng'] != null) {
       return toDouble(loc['lng']);
     }
@@ -27,6 +33,12 @@ double? extractCoord(Map<String, dynamic> e, String key) {
   // Fallback if API ever returns flat lat/lon
   if (e[key] != null) {
     return toDouble(e[key]);
+  }
+  if (key == 'lat' && e['latitude'] != null) {
+    return toDouble(e['latitude']);
+  }
+  if (key == 'lon' && e['longitude'] != null) {
+    return toDouble(e['longitude']);
   }
   if (key == 'lon' && e['lng'] != null) {
     return toDouble(e['lng']);

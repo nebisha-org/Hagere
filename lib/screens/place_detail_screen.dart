@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import '../utils/geo.dart';
 
 class PlaceDetailScreen extends ConsumerStatefulWidget {
   const PlaceDetailScreen({super.key, required this.entity});
@@ -172,14 +175,39 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   }
 
   double? _lat(Map<String, dynamic> e) =>
-      _toDouble(e['lat'] ?? e['latitude']);
+      extractCoord(e, 'lat') ?? _toDouble(e['latitude']);
   double? _lon(Map<String, dynamic> e) =>
-      _toDouble(e['lon'] ?? e['lng'] ?? e['longitude']);
+      extractCoord(e, 'lon') ?? _toDouble(e['longitude']);
 
-  String _staticMapUrl(double lat, double lon) {
-    final zoom = 15;
-    final size = '900x450';
-    return 'https://staticmap.openstreetmap.de/staticmap.php?center=$lat,$lon&zoom=$zoom&size=$size&markers=$lat,$lon,red-pushpin';
+  Widget _mapPreview(double lat, double lon) {
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: LatLng(lat, lon),
+        initialZoom: 15,
+        interactionOptions:
+            const InteractionOptions(flags: InteractiveFlag.none),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.digitalnebi.allhabesha',
+        ),
+        MarkerLayer(
+          markers: [
+            Marker(
+              point: LatLng(lat, lon),
+              width: 40,
+              height: 40,
+              child: const Icon(
+                Icons.location_on,
+                color: Colors.red,
+                size: 36,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   Future<void> _openMaps(double lat, double lon, {String? name}) async {
@@ -349,16 +377,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                           borderRadius: BorderRadius.circular(12),
                           child: AspectRatio(
                             aspectRatio: 2,
-                            child: Image.network(
-                              _staticMapUrl(lat, lon),
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.grey.shade200,
-                                child: const Center(
-                                  child: Text('Map preview unavailable'),
-                                ),
-                              ),
-                            ),
+                            child: _mapPreview(lat, lon),
                           ),
                         ),
                         const SizedBox(height: 12),
