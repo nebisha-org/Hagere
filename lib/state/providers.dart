@@ -295,13 +295,14 @@ final availableCategoriesProvider =
   final rawAsync = ref.watch(entitiesRawProvider);
 
   return rawAsync.whenData((items) {
-    if (items.isEmpty) return <AppCategory>[];
+    if (items.isEmpty) return cats;
 
     final filtered = <AppCategory>[];
     for (final cat in cats) {
       final hasAny = items.any((e) => matchesCategoryForEntity(e, cat));
       if (hasAny) filtered.add(cat);
     }
+    if (filtered.isEmpty) return cats;
     return filtered;
   });
 });

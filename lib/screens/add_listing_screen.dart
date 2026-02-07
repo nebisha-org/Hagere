@@ -1,17 +1,17 @@
 import '../config/env.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../data/habesha_cities.dart';
 import '../models/category.dart';
 import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
-import 'package:flutter/foundation.dart' as foundation;
-
-
 class AddListingScreen extends ConsumerStatefulWidget {
   const AddListingScreen({super.key});
   static const routeName = '/add-listing';
@@ -26,6 +26,27 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
+  final _photoUrlsCtrl = TextEditingController();
+  final _tagsCtrl = TextEditingController();
+  final _websiteCtrl = TextEditingController();
+  final _youtubeCtrl = TextEditingController();
+  final _tiktokCtrl = TextEditingController();
+  final _instagramCtrl = TextEditingController();
+  final _facebookCtrl = TextEditingController();
+  final _whatsappCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _countryCtrl = TextEditingController();
+  final _cityCtrl = TextEditingController();
+  final _stateCtrl = TextEditingController();
+  final _neighborhoodCtrl = TextEditingController();
+  final _mapLinkCtrl = TextEditingController();
+  final _hoursCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController();
+
+  List<HabeshaCity> _selectedCities = [];
+  final ImagePicker _imagePicker = ImagePicker();
+  List<XFile> _pickedImages = [];
 
   bool _saving = false;
   bool _promoting = false;
@@ -35,6 +56,23 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _addressCtrl.dispose();
+    _descriptionCtrl.dispose();
+    _photoUrlsCtrl.dispose();
+    _tagsCtrl.dispose();
+    _websiteCtrl.dispose();
+    _youtubeCtrl.dispose();
+    _tiktokCtrl.dispose();
+    _instagramCtrl.dispose();
+    _facebookCtrl.dispose();
+    _whatsappCtrl.dispose();
+    _emailCtrl.dispose();
+    _countryCtrl.dispose();
+    _cityCtrl.dispose();
+    _stateCtrl.dispose();
+    _neighborhoodCtrl.dispose();
+    _mapLinkCtrl.dispose();
+    _hoursCtrl.dispose();
+    _priceCtrl.dispose();
     super.dispose();
   }
 
@@ -102,6 +140,75 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       "contactPhone": _phoneCtrl.text.trim(),
       "remote": false,
     };
+
+    void putIfNotEmpty(String key, String value) {
+      final v = value.trim();
+      if (v.isNotEmpty) body[key] = v;
+    }
+
+    List<String> splitList(String raw) => raw
+        .split(RegExp(r'[,\n]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    putIfNotEmpty("description", _descriptionCtrl.text);
+    putIfNotEmpty("website", _websiteCtrl.text);
+    putIfNotEmpty("youtube", _youtubeCtrl.text);
+    putIfNotEmpty("tiktok", _tiktokCtrl.text);
+    putIfNotEmpty("instagram", _instagramCtrl.text);
+    putIfNotEmpty("facebook", _facebookCtrl.text);
+    putIfNotEmpty("whatsapp", _whatsappCtrl.text);
+    putIfNotEmpty("email", _emailCtrl.text);
+    putIfNotEmpty("city", _cityCtrl.text);
+    putIfNotEmpty("state", _stateCtrl.text);
+    putIfNotEmpty("country", _countryCtrl.text);
+    putIfNotEmpty("neighborhood", _neighborhoodCtrl.text);
+    putIfNotEmpty("mapLink", _mapLinkCtrl.text);
+    putIfNotEmpty("hours", _hoursCtrl.text);
+    putIfNotEmpty("priceRange", _priceCtrl.text);
+
+    final tags = splitList(_tagsCtrl.text);
+    if (tags.isNotEmpty) body["tags"] = tags;
+
+    final photos = splitList(_photoUrlsCtrl.text);
+    if (photos.isNotEmpty) {
+      body["images"] = photos;
+      body["photo"] = photos.first;
+    }
+    if (_selectedCities.isNotEmpty) {
+      body["cityIds"] = _selectedCities.map((c) => c.id).toList();
+      body["cities"] = _selectedCities.map((c) => c.city).toList();
+
+      final regions = _selectedCities
+          .map((c) => c.region.trim())
+          .where((r) => r.isNotEmpty)
+          .toSet()
+          .toList();
+      if (regions.isNotEmpty) body["regions"] = regions;
+
+      final countries = _selectedCities
+          .map((c) => c.country.trim())
+          .where((c) => c.isNotEmpty)
+          .toSet()
+          .toList();
+      if (countries.isNotEmpty) body["countries"] = countries;
+
+      final countryCodes = _selectedCities
+          .map((c) => c.countryCode.trim())
+          .where((c) => c.isNotEmpty)
+          .toSet()
+          .toList();
+      if (countryCodes.isNotEmpty) body["countryCodes"] = countryCodes;
+
+      if (_selectedCities.length == 1) {
+        final only = _selectedCities.first;
+        body["cityId"] = only.id;
+        if (only.countryCode.trim().isNotEmpty) {
+          body["countryCode"] = only.countryCode;
+        }
+      }
+    }
 
     _log('CREATE ENTITY: POST $uri');
     _log('CREATE ENTITY BODY: ${jsonEncode(body)}');
@@ -228,6 +335,220 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     );
   }
 
+  Future<void> _addFromCamera() async {
+    try {
+      final file = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 82,
+        maxWidth: 1600,
+      );
+      if (file == null) return;
+      setState(() {
+        _pickedImages = [..._pickedImages, file];
+      });
+    } catch (e) {
+      _snack('Camera error: $e');
+    }
+  }
+
+  Future<void> _addFromGallery() async {
+    try {
+      final files = await _imagePicker.pickMultiImage(
+        imageQuality: 82,
+        maxWidth: 1600,
+      );
+      if (files.isEmpty) return;
+      setState(() {
+        final existing = _pickedImages.map((e) => e.path).toSet();
+        for (final f in files) {
+          if (!existing.contains(f.path)) _pickedImages.add(f);
+        }
+      });
+    } catch (e) {
+      _snack('Gallery error: $e');
+    }
+  }
+
+  void _removeImageAt(int index) {
+    setState(() {
+      _pickedImages.removeAt(index);
+    });
+  }
+
+  Widget _buildPhotoPreview() {
+    if (_pickedImages.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (int i = 0; i < _pickedImages.length; i++)
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  File(_pickedImages[i].path),
+                  width: 96,
+                  height: 96,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                right: 4,
+                top: 4,
+                child: InkWell(
+                  onTap: () => _removeImageAt(i),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  void _syncCityFieldsFromSelection() {
+    if (_selectedCities.length == 1) {
+      final only = _selectedCities.first;
+      _cityCtrl.text = only.city;
+      _stateCtrl.text = only.region;
+      _countryCtrl.text = only.country;
+    }
+  }
+
+  Future<void> _chooseCities() async {
+    String query = '';
+    final selectedIds = _selectedCities.map((c) => c.id).toSet();
+
+    final result = await showModalBottomSheet<List<HabeshaCity>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: StatefulBuilder(
+            builder: (context, setSheetState) {
+              final q = query.trim().toLowerCase();
+              final filtered = q.isEmpty
+                  ? kHabeshaCities
+                  : kHabeshaCities
+                      .where(
+                        (c) => c.label.toLowerCase().contains(q),
+                      )
+                      .toList();
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Pick cities',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Text(
+                            '${selectedIds.length} selected',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () =>
+                                setSheetState(() => selectedIds.clear()),
+                            child: const Text('Clear'),
+                          ),
+                          const SizedBox(width: 4),
+                          ElevatedButton(
+                            onPressed: () {
+                              final chosen = kHabeshaCities
+                                  .where((c) => selectedIds.contains(c.id))
+                                  .toList();
+                              Navigator.of(ctx).pop(chosen);
+                            },
+                            child: const Text('Done'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Search',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (v) => setSheetState(() => query = v),
+                      ),
+                    ),
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final c = filtered[i];
+                          final checked = selectedIds.contains(c.id);
+                          return ListTile(
+                            title: Text(c.city),
+                            subtitle: Text(
+                              c.region.trim().isEmpty
+                                  ? c.country
+                                  : '${c.region}, ${c.country}',
+                            ),
+                            onTap: () {
+                              setSheetState(() {
+                                if (checked) {
+                                  selectedIds.remove(c.id);
+                                } else {
+                                  selectedIds.add(c.id);
+                                }
+                              });
+                            },
+                            trailing: checked
+                                ? const Icon(Icons.check_circle)
+                                : const Icon(Icons.circle_outlined),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    setState(() {
+      _selectedCities = result;
+      _syncCityFieldsFromSelection();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     _log('BUILD: saving=$_saving promoting=$_promoting');
@@ -243,6 +564,16 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     // This prevents a blank dropdown if categories failed to load upstream
     final hasCategories = categories.isNotEmpty;
+
+    Widget sectionTitle(String text) => Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 6),
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Add your listing')),
@@ -283,6 +614,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                   ),
                 ),
               const SizedBox(height: 12),
+              sectionTitle('Business Details'),
               TextFormField(
                 controller: _nameCtrl,
                 decoration: const InputDecoration(
@@ -294,6 +626,64 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               ),
               const SizedBox(height: 12),
               TextFormField(
+                controller: _descriptionCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+                minLines: 3,
+                maxLines: 5,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _tagsCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Tags / keywords',
+                  helperText: 'Comma-separated (e.g., injera, coffee, catering)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              sectionTitle('Photos'),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _addFromCamera,
+                    icon: const Icon(Icons.photo_camera),
+                    label: const Text('Take photo'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _addFromGallery,
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('Pick from gallery'),
+                  ),
+                  if (_pickedImages.isNotEmpty)
+                    OutlinedButton.icon(
+                      onPressed: () => setState(() => _pickedImages.clear()),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Clear photos'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildPhotoPreview(),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _photoUrlsCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Photo URLs',
+                  helperText: 'Paste one or more image links, separated by commas',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              sectionTitle('Contact'),
+              TextFormField(
                 controller: _phoneCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Phone (optional)',
@@ -303,9 +693,171 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               ),
               const SizedBox(height: 12),
               TextFormField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Email (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _whatsappCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'WhatsApp (optional)',
+                  helperText: 'Include country code (e.g., +1 202 555 0123)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              sectionTitle('Location'),
+              TextFormField(
                 controller: _addressCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Address (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _neighborhoodCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Neighborhood / Area',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _chooseCities,
+                icon: const Icon(Icons.location_city),
+                label: const Text('Pick from 50 cities'),
+              ),
+              if (_selectedCities.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: _selectedCities
+                        .map(
+                          (c) => Chip(
+                            label: Text(c.label),
+                            onDeleted: () {
+                              setState(() {
+                                _selectedCities =
+                                    _selectedCities.where((e) => e.id != c.id).toList();
+                                _syncCityFieldsFromSelection();
+                              });
+                            },
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              if (_selectedCities.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Multiple cities selected. City/State/Country fields are optional.',
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _cityCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'City (where it should appear)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _stateCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'State / Region',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _countryCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Country',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _mapLinkCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Google Maps link (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 12),
+              sectionTitle('Online Links'),
+              TextFormField(
+                controller: _websiteCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Website (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _instagramCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Instagram (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _facebookCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Facebook (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _youtubeCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'YouTube link (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _tiktokCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'TikTok link (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 12),
+              sectionTitle('Extras'),
+              TextFormField(
+                controller: _hoursCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Hours (optional)',
+                  helperText: 'e.g., Mon–Sat 9am–8pm',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _priceCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Price range (optional)',
+                  helperText: r'e.g., $, $$, $$$',
                   border: OutlineInputBorder(),
                 ),
               ),

@@ -34,6 +34,12 @@
 	<string>We use your location to provide location-based content.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We use your location to show nearby All Habesha events and activities places.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We use the camera to let you add photos to your listing.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We use your photo library to add photos to your listing.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We save listing photos to your library when you choose to.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>
