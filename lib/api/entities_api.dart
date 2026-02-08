@@ -75,6 +75,19 @@ class EntitiesApi {
         .toList();
   }
 
+  /// ENTITY BY ID
+  Future<Map<String, dynamic>> fetchEntityById(String entityId) async {
+    final uri = Uri.parse('$apiBaseUrl/entities/$entityId');
+    final res = await http.get(uri, headers: {'Accept': 'application/json'});
+    if (res.statusCode != 200) throw Exception(res.body);
+
+    final decoded = jsonDecode(res.body);
+    if (decoded is Map) {
+      return decoded.cast<String, dynamic>();
+    }
+    throw Exception('Unexpected entity response: ${res.body}');
+  }
+
   /// CACHE WRAPPER
   Future<List<Map<String, dynamic>>> fetchEntitiesCached({
     required String regionKey,

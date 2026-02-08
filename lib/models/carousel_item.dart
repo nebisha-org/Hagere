@@ -1,6 +1,7 @@
 class CarouselItem {
   CarouselItem({
     required this.itemId,
+    required this.entityId,
     required this.title,
     required this.subtitle,
     required this.imageUrl,
@@ -11,6 +12,7 @@ class CarouselItem {
   });
 
   final String itemId;
+  final String entityId;
   final String title;
   final String subtitle;
   final String imageUrl;
@@ -25,6 +27,8 @@ class CarouselItem {
           json['itemId']?.toString() ??
           json['id']?.toString() ??
           '',
+      entityId:
+          json['entity_id']?.toString() ?? json['entityId']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
       subtitle: json['subtitle']?.toString() ?? '',
       imageUrl: json['image_url']?.toString() ??

@@ -6,6 +6,7 @@ import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
+import '../models/carousel_item.dart';
 
 import 'entities_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
@@ -13,6 +14,7 @@ import 'package:agerelige_flutter_client/widgets/add_listing_carousel.dart';
 // keep import even if hidden, no harm
 import 'package:agerelige_flutter_client/widgets/promote_home_tile.dart';
 import 'package:agerelige_flutter_client/screens/places_v2_list_screen.dart';
+import 'place_detail_screen.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -22,6 +24,27 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+  Future<void> _openCarouselEntity(CarouselItem item) async {
+    final entityId = item.entityId.trim();
+    if (entityId.isEmpty) return;
+
+    try {
+      final api = ref.read(entitiesApiProvider);
+      final entity = await api.fetchEntityById(entityId);
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PlaceDetailScreen(entity: entity),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open listing: $e')),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -161,12 +184,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   return carouselAsync.when(
                     loading: () => AddListingCarousel(
                       height: carouselHeight,
+                      onEntityTap: _openCarouselEntity,
                       onAddTap: () => Navigator.of(context).pushNamed(
                         AddListingScreen.routeName,
                       ),
                     ),
                     error: (_, __) => AddListingCarousel(
                       height: carouselHeight,
+                      onEntityTap: _openCarouselEntity,
                       onAddTap: () => Navigator.of(context).pushNamed(
                         AddListingScreen.routeName,
                       ),
@@ -174,6 +199,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     data: (items) => AddListingCarousel(
                       height: carouselHeight,
                       items: items,
+                      onEntityTap: _openCarouselEntity,
                       onAddTap: () => Navigator.of(context).pushNamed(
                         AddListingScreen.routeName,
                       ),
@@ -237,6 +263,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   final stripeMode = ref.watch(stripeModeProvider);
                   final isTest = stripeMode == StripeMode.test;
                   return SwitchListTile(
+                    key: const Key('stripe_mode_toggle'),
                     value: isTest,
                     onChanged: (on) {
                       ref

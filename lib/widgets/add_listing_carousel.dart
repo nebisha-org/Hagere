@@ -11,6 +11,7 @@ class PromoTileData {
     required this.subtitle,
     required this.icon,
     required this.gradient,
+    this.tileKey,
     this.imageUrl,
     this.ctaLabel,
     this.ctaUrl,
@@ -21,6 +22,7 @@ class PromoTileData {
   final String subtitle;
   final IconData icon;
   final List<Color> gradient;
+  final Key? tileKey;
   final String? imageUrl;
   final String? ctaLabel;
   final String? ctaUrl;
@@ -33,11 +35,13 @@ class AddListingCarousel extends StatefulWidget {
     required this.onAddTap,
     this.items = const [],
     this.height,
+    this.onEntityTap,
   });
 
   final VoidCallback onAddTap;
   final List<CarouselItem> items;
   final double? height;
+  final void Function(CarouselItem item)? onEntityTap;
 
   @override
   State<AddListingCarousel> createState() => _AddListingCarouselState();
@@ -48,6 +52,8 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
   Timer? _timer;
   int _basePage = 0;
   List<PromoTileData> _tiles = [];
+  static const bool _disableAutoscroll =
+      bool.fromEnvironment('DISABLE_CAROUSEL_AUTOSCROLL', defaultValue: false);
 
   static const List<List<Color>> _palette = [
     [Color(0xFF0F766E), Color(0xFF14B8A6)],
@@ -64,6 +70,7 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
         subtitle: 'Create your business listing and get discovered.',
         icon: Icons.add_business,
         gradient: const [Color(0xFF1B1F3B), Color(0xFF3B3F68)],
+        tileKey: const Key('add_listing_tile'),
         onTap: widget.onAddTap,
         ctaLabel: 'Get started',
       ),
@@ -74,6 +81,8 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
       for (var i = 0; i < widget.items.length; i++) {
         final item = widget.items[i];
         final gradient = _palette[i % _palette.length];
+        final hasEntityTap =
+            widget.onEntityTap != null && item.entityId.isNotEmpty;
         remoteTiles.add(
           PromoTileData(
             title: item.title.isEmpty ? 'Community Highlight' : item.title,
@@ -84,7 +93,9 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
             gradient: gradient,
             imageUrl: item.imageUrl.isEmpty ? null : item.imageUrl,
             ctaLabel: item.ctaLabel.isEmpty ? 'Learn more' : item.ctaLabel,
-            ctaUrl: item.ctaUrl.isEmpty ? null : item.ctaUrl,
+            ctaUrl:
+                hasEntityTap ? null : (item.ctaUrl.isEmpty ? null : item.ctaUrl),
+            onTap: hasEntityTap ? () => widget.onEntityTap!(item) : null,
           ),
         );
       }
@@ -134,24 +145,26 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
     super.initState();
     _syncTiles();
     _controller = PageController(viewportFraction: 0.86, initialPage: _basePage);
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!_controller.hasClients) return;
-      final current = (_controller.page ?? _basePage).round();
-      final next = current + 1;
-      _controller.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 900),
-        curve: Curves.easeInOut,
-      );
-      if (next >= _basePage + (_tiles.length * 200)) {
-        final normalized = _basePage + (next % _tiles.length);
-        Future.delayed(const Duration(milliseconds: 950), () {
-          if (_controller.hasClients) {
-            _controller.jumpToPage(normalized);
-          }
-        });
-      }
-    });
+    if (!_disableAutoscroll) {
+      _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (!_controller.hasClients) return;
+        final current = (_controller.page ?? _basePage).round();
+        final next = current + 1;
+        _controller.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeInOut,
+        );
+        if (next >= _basePage + (_tiles.length * 200)) {
+          final normalized = _basePage + (next % _tiles.length);
+          Future.delayed(const Duration(milliseconds: 950), () {
+            if (_controller.hasClients) {
+              _controller.jumpToPage(normalized);
+            }
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -189,6 +202,8 @@ class _PromoTile extends StatelessWidget {
   const _PromoTile({required this.data});
 
   final PromoTileData data;
+  static const bool _disableRemoteImages =
+      bool.fromEnvironment('DISABLE_REMOTE_IMAGES', defaultValue: false);
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +213,7 @@ class _PromoTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          key: data.tileKey,
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
             if (data.onTap != null) {
@@ -225,7 +241,7 @@ class _PromoTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: Stack(
                 children: [
-                  if (hasImage)
+                  if (hasImage && !_disableRemoteImages)
                     Positioned.fill(
                       child: Image.network(
                         data.imageUrl!,

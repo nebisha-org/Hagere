@@ -23,6 +23,8 @@ class AddListingScreen extends ConsumerStatefulWidget {
 }
 
 class _AddListingScreenState extends ConsumerState<AddListingScreen> {
+  static const bool _skipStripeLaunch =
+      bool.fromEnvironment('SKIP_STRIPE_LAUNCH', defaultValue: false);
   final _formKey = GlobalKey<FormState>();
 
   final _nameCtrl = TextEditingController();
@@ -290,6 +292,13 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     _log('CHECKOUT: launching => $uriToLaunch');
 
+    if (_skipStripeLaunch) {
+      _log('CHECKOUT: skip launch (SKIP_STRIPE_LAUNCH)');
+      ref.invalidate(homeSponsoredProvider);
+      debugPrint("CHECKOUT URL => $checkoutUrl");
+      return;
+    }
+
     final ok = await launchUrl(
       uriToLaunch,
       mode: LaunchMode.externalApplication,
@@ -317,6 +326,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       setLoading: (on) => setState(() => _saving = on),
       fn: () async {
         await _createEntity();
+        ref.invalidate(carouselItemsProvider);
         if (!mounted) return;
         Navigator.of(context).pop(true);
       },
@@ -336,6 +346,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       setLoading: (on) => setState(() => _promoting = on),
       fn: () async {
         final entityId = await _createEntity();
+        ref.invalidate(carouselItemsProvider);
         await _startCheckout(entityId: entityId);
       },
     );
@@ -590,6 +601,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           child: ListView(
             children: [
               DropdownButtonFormField<AppCategory>(
+                key: const Key('add_listing_category'),
                 value: hasCategories ? selected : null,
                 decoration: const InputDecoration(
                   labelText: 'Category *',
@@ -622,6 +634,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               const SizedBox(height: 12),
               sectionTitle('Business Details'),
               TextFormField(
+                key: const Key('add_listing_name'),
                 controller: _nameCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Business name *',
@@ -874,6 +887,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton(
+                key: const Key('add_listing_save_promote'),
                 onPressed: (_saving || _promoting) ? null : _onSaveAndPromote,
                 child:
                     _promoting ? buttonSpinner() : const Text('Save & Promote'),
