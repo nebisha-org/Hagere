@@ -217,7 +217,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             data: (_) => const SizedBox.shrink(),
                             // data: (entityId) => PromoteHomeTile(
                             //   entityId: entityId,
-                            //   apiBaseUrl: apiBaseUrl,
+                            //   paymentsBaseUrl: paymentsBaseUrl,
                             // ),
                           ),
                         ],

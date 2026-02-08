@@ -13,11 +13,11 @@ class PromoteHomeTile extends ConsumerStatefulWidget {
   const PromoteHomeTile({
     super.key,
     required this.entityId,
-    required this.apiBaseUrl,
+    required this.paymentsBaseUrl,
   });
 
   final String entityId;
-  final String apiBaseUrl;
+  final String paymentsBaseUrl;
 
   @override
   ConsumerState<PromoteHomeTile> createState() => _PromoteHomeTileState();
@@ -63,7 +63,7 @@ class _PromoteHomeTileState extends ConsumerState<PromoteHomeTile>
     setState(() => _busy = true);
 
     try {
-      final api = PaymentsApi(baseUrl: widget.apiBaseUrl);
+      final api = PaymentsApi(baseUrl: widget.paymentsBaseUrl);
 
       // Your existing method name may be different.
       // This must call your backend which returns a Stripe Checkout URL.

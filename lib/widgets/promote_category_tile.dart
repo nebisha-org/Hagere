@@ -9,12 +9,12 @@ class PromoteCategoryTile extends StatefulWidget {
     super.key,
     required this.categoryId,
     required this.entityId,
-    required this.apiBaseUrl,
+    required this.paymentsBaseUrl,
   });
 
   final String categoryId;
   final String entityId;
-  final String apiBaseUrl;
+  final String paymentsBaseUrl;
 
   @override
   State<PromoteCategoryTile> createState() => _PromoteCategoryTileState();
@@ -73,7 +73,7 @@ class _PromoteCategoryTileState extends State<PromoteCategoryTile> {
   Future<void> _onPromote() async {
     setState(() => _loading = true);
     try {
-      final api = PaymentsApi(baseUrl: widget.apiBaseUrl);
+      final api = PaymentsApi(baseUrl: widget.paymentsBaseUrl);
 
       final checkoutUrl = await api.createCheckoutSession(
         entityId: widget.entityId,

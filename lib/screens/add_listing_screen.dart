@@ -243,7 +243,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   }
 
   Future<void> _startCheckout({required String entityId}) async {
-    final uri = Uri.parse('$apiBaseUrl/payments/checkout-session');
+    final uri = Uri.parse('$paymentsBaseUrl/payments/checkout-session');
 
     final payload = <String, dynamic>{
       "entityId": entityId,

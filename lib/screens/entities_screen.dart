@@ -111,7 +111,7 @@ class EntitiesScreen extends ConsumerWidget {
                                           Text('Could not load device id: $e'),
                                     ),
                                     data: (entityId) => PromoteCategoryTile(
-                                      apiBaseUrl: apiBaseUrl,
+                                      paymentsBaseUrl: paymentsBaseUrl,
                                       categoryId: categoryId,
                                       entityId: entityId,
                                     ),
