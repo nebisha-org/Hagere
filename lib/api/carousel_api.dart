@@ -5,7 +5,7 @@ import '../config/env.dart';
 import '../models/carousel_item.dart';
 
 class CarouselApi {
-  final String baseUrl = apiBaseUrl;
+  final String baseUrl = carouselBaseUrl;
 
   Future<List<CarouselItem>> fetchCarousel({
     String? city,

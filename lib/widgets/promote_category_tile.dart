@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/payments_api.dart';
 import '../services/checkout_launcher.dart';
+import '../state/stripe_mode_provider.dart';
 
 const bool kShowHomeSponsor = false;
 
-class PromoteCategoryTile extends StatefulWidget {
+class PromoteCategoryTile extends ConsumerStatefulWidget {
   const PromoteCategoryTile({
     super.key,
     required this.categoryId,
@@ -17,10 +19,11 @@ class PromoteCategoryTile extends StatefulWidget {
   final String paymentsBaseUrl;
 
   @override
-  State<PromoteCategoryTile> createState() => _PromoteCategoryTileState();
+  ConsumerState<PromoteCategoryTile> createState() =>
+      _PromoteCategoryTileState();
 }
 
-class _PromoteCategoryTileState extends State<PromoteCategoryTile> {
+class _PromoteCategoryTileState extends ConsumerState<PromoteCategoryTile> {
   bool _loading = false;
 
   @override
@@ -74,11 +77,13 @@ class _PromoteCategoryTileState extends State<PromoteCategoryTile> {
     setState(() => _loading = true);
     try {
       final api = PaymentsApi(baseUrl: widget.paymentsBaseUrl);
+      final stripeMode = ref.read(stripeModeProvider);
 
       final checkoutUrl = await api.createCheckoutSession(
         entityId: widget.entityId,
         promotionTier: 'categoryFeatured',
         categoryId: widget.categoryId,
+        stripeMode: stripeMode.name,
       );
 
       await CheckoutLauncher.openExternal(checkoutUrl);

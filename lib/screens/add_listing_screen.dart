@@ -12,6 +12,8 @@ import '../models/category.dart';
 import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
+import '../state/stripe_mode_provider.dart';
+
 class AddListingScreen extends ConsumerStatefulWidget {
   const AddListingScreen({super.key});
   static const routeName = '/add-listing';
@@ -244,10 +246,14 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
   Future<void> _startCheckout({required String entityId}) async {
     final uri = Uri.parse('$paymentsBaseUrl/payments/checkout-session');
+    final stripeMode = ref.read(stripeModeProvider);
+    final stripeModeValue =
+        stripeMode == StripeMode.test ? 'test' : 'live';
 
     final payload = <String, dynamic>{
       "entityId": entityId,
       "promotionTier": "homeSponsored",
+      "stripeMode": stripeModeValue,
     };
 
     _log('CHECKOUT: POST $uri');

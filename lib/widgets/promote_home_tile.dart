@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/payments_api.dart';
 import '../state/sponsored_providers.dart';
+import '../state/stripe_mode_provider.dart';
 
 class PromoteHomeTile extends ConsumerStatefulWidget {
   const PromoteHomeTile({
@@ -64,12 +65,14 @@ class _PromoteHomeTileState extends ConsumerState<PromoteHomeTile>
 
     try {
       final api = PaymentsApi(baseUrl: widget.paymentsBaseUrl);
+      final stripeMode = ref.read(stripeModeProvider);
 
       // Your existing method name may be different.
       // This must call your backend which returns a Stripe Checkout URL.
       final checkoutUrl = await api.createCheckoutSession(
         entityId: widget.entityId,
         promotionTier: _promotionTier,
+        stripeMode: stripeMode.name,
       );
 
       final uri =

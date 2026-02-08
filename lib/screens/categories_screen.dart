@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
+import '../state/stripe_mode_provider.dart';
 
 import 'entities_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
@@ -92,10 +94,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           // 0..cats.length-1 => categories
           // cats.length      => AddListingCard
           // cats.length+1    => Sponsored section
+          // cats.length+2    => Stripe mode toggle (debug only)
           final categoriesCount = cats.length;
           final addListingIndex = categoriesCount;
           final sponsoredIndex = categoriesCount + 1;
-          final totalRows = categoriesCount + 2;
+          final showStripeToggle = !kReleaseMode;
+          final stripeToggleIndex = categoriesCount + 2;
+          final totalRows =
+              categoriesCount + 2 + (showStripeToggle ? 1 : 0);
 
           return LayoutBuilder(
             builder: (context, constraints) {
@@ -223,6 +229,23 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         ],
                       );
                     },
+                  );
+                }
+
+                // 4) Stripe mode toggle (debug only)
+                if (showStripeToggle && i == stripeToggleIndex) {
+                  final stripeMode = ref.watch(stripeModeProvider);
+                  final isTest = stripeMode == StripeMode.test;
+                  return SwitchListTile(
+                    value: isTest,
+                    onChanged: (on) {
+                      ref
+                          .read(stripeModeProvider.notifier)
+                          .setMode(on ? StripeMode.test : StripeMode.live);
+                    },
+                    title: const Text('Stripe mode'),
+                    subtitle: Text(isTest ? 'Test' : 'Live'),
+                    secondary: const Icon(Icons.payment),
                   );
                 }
 

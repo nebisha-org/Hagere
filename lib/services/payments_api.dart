@@ -12,6 +12,7 @@ class PaymentsApi {
     required String entityId,
     required String promotionTier, // "homeSponsored" or "categoryFeatured"
     String? categoryId,
+    String? stripeMode, // "live" or "test"
   }) async {
     final uri = Uri.parse('$baseUrl/payments/checkout-session');
 
@@ -19,6 +20,8 @@ class PaymentsApi {
       'entityId': entityId,
       'promotionTier': promotionTier,
       if (categoryId != null) 'categoryId': categoryId,
+      if (stripeMode != null && stripeMode.trim().isNotEmpty)
+        'stripeMode': stripeMode,
     };
 
     debugPrint('CHECKOUT POST => $uri');
