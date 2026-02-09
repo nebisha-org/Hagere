@@ -63,7 +63,7 @@ class QcEditableImage extends ConsumerWidget {
                 );
                 if (updated == null) return;
                 onUpdated?.call(updated);
-                EntitiesCache.clearAll();
+                await EntitiesCache.clearAll();
                 ref.invalidate(entitiesRawProvider);
                 ref.invalidate(categoryOverridesProvider);
                 ref.invalidate(carouselItemsProvider);

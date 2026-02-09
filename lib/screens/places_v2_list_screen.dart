@@ -134,6 +134,21 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                     final raw = items[i];
                     final e = Entity.fromJson(raw);
                     final entityId = (raw['id'] ?? raw['place_id'] ?? '').toString();
+                    final addressKey =
+                        (raw['formatted_address'] ?? '').toString().trim().isNotEmpty
+                            ? 'formatted_address'
+                            : 'address';
+                    final phoneKey = (raw['formatted_phone_number'] ?? '')
+                            .toString()
+                            .trim()
+                            .isNotEmpty
+                        ? 'formatted_phone_number'
+                        : ((raw['international_phone_number'] ?? '')
+                                    .toString()
+                                    .trim()
+                                    .isNotEmpty
+                                ? 'international_phone_number'
+                                : 'phone');
 
                     return ListTile(
                       title: QcEditableText(
@@ -150,14 +165,14 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                               e.address,
                               entityType: 'entity',
                               entityId: entityId,
-                              fieldKey: 'address',
+                              fieldKey: addressKey,
                             ),
                           if (e.phone.isNotEmpty)
                             QcEditableText(
                               e.phone,
                               entityType: 'entity',
                               entityId: entityId,
-                              fieldKey: 'phone',
+                              fieldKey: phoneKey,
                             ),
                         ],
                       ),
