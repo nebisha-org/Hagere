@@ -1,8 +1,12 @@
 import '../config/env.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,8 +20,6 @@ import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
 import '../state/translation_provider.dart';
 import '../widgets/tr_text.dart';
-
-enum AuthChoice { none, signIn, signUp, guest }
 
 class AddListingScreen extends ConsumerStatefulWidget {
   const AddListingScreen({super.key});
@@ -42,8 +44,11 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   final _youtubeCtrl = TextEditingController();
   final _tiktokCtrl = TextEditingController();
 
-  AuthChoice _authChoice = AuthChoice.none;
   bool _authUnlocked = false;
+  bool _authWorking = false;
+  String? _authLabel;
+  StreamSubscription<User?>? _authSub;
+  Future<void>? _googleInit;
   final _instagramCtrl = TextEditingController();
   final _facebookCtrl = TextEditingController();
   final _whatsappCtrl = TextEditingController();
@@ -64,7 +69,29 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   bool _promoting = false;
 
   @override
+  void initState() {
+    super.initState();
+    _googleInit = GoogleSignIn.instance.initialize();
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (!mounted) return;
+      if (user == null) {
+        setState(() {
+          _authUnlocked = false;
+          _authLabel = null;
+        });
+        return;
+      }
+      final label = user.displayName ?? user.email ?? 'Signed in';
+      setState(() {
+        _authUnlocked = true;
+        _authLabel = label;
+      });
+    });
+  }
+
+  @override
   void dispose() {
+    _authSub?.cancel();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _addressCtrl.dispose();
@@ -99,6 +126,31 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     _log('ERROR: $e');
     _log('$st');
     _snack('$e');
+  }
+
+  String _authErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'Invalid email address.';
+      case 'user-not-found':
+        return 'No account found for that email.';
+      case 'wrong-password':
+        return 'Incorrect password.';
+      case 'email-already-in-use':
+        return 'Email is already in use.';
+      case 'weak-password':
+        return 'Password is too weak.';
+      case 'user-disabled':
+        return 'This account is disabled.';
+      case 'operation-not-allowed':
+        return 'Email/password auth is disabled for this project.';
+      case 'invalid-credential':
+        return 'Invalid credentials.';
+      case 'too-many-requests':
+        return 'Too many attempts. Try again later.';
+      default:
+        return e.message ?? 'Sign in failed. Please try again.';
+    }
   }
 
   bool _validateOrExplain({required String actionLabel}) {
@@ -143,6 +195,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (category == null) {
       throw Exception('Category required');
     }
+
+    final user = FirebaseAuth.instance.currentUser;
 
     final uri = Uri.parse('$apiBaseUrl/entities');
     final body = <String, dynamic>{
@@ -222,16 +276,37 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       }
     }
 
+    if (user != null) {
+      body["ownerId"] = user.uid;
+      final providerId = user.providerData.isNotEmpty
+          ? user.providerData.first.providerId
+          : "firebase";
+      body["ownerProvider"] = providerId;
+      if (user.email != null && user.email!.trim().isNotEmpty) {
+        body["ownerEmail"] = user.email!.trim();
+      }
+    }
+
     _log('CREATE ENTITY: POST $uri');
     _log('CREATE ENTITY BODY: ${jsonEncode(body)}');
+
+    final headers = <String, String>{
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    };
+    if (user != null) {
+      try {
+        final token = await user.getIdToken();
+        headers["Authorization"] = "Bearer $token";
+      } catch (e) {
+        _log('AUTH TOKEN ERROR: $e');
+      }
+    }
 
     final res = await http
         .post(
           uri,
-          headers: const {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
+          headers: headers,
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 25));
@@ -575,190 +650,57 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     });
   }
 
-  Future<void> _handleAuthChoice(AuthChoice choice) async {
-    if (choice == AuthChoice.guest) {
-      setState(() {
-        _authChoice = choice;
-        _authUnlocked = true;
-      });
-      return;
-    }
-
-    if (choice == AuthChoice.signIn) {
-      final ok = await _promptSignIn();
-      if (!mounted) return;
-      setState(() {
-        _authChoice = ok ? choice : AuthChoice.none;
-        _authUnlocked = ok;
-      });
-      return;
-    }
-
-    if (choice == AuthChoice.signUp) {
-      final ok = await _promptSignUp();
-      if (!mounted) return;
-      setState(() {
-        _authChoice = ok ? choice : AuthChoice.none;
-        _authUnlocked = ok;
-      });
-      return;
+  Future<void> _signInWithGoogle() async {
+    if (!mounted) return;
+    setState(() => _authWorking = true);
+    try {
+      await _googleInit;
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final auth = googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        idToken: auth.idToken,
+      );
+      await FirebaseAuth.instance.signInWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      _snack(_authErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _authWorking = false);
     }
   }
 
-  Future<bool> _promptSignIn() async {
-    final usernameCtrl = TextEditingController();
-    final passwordCtrl = TextEditingController();
-    String? error;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return AlertDialog(
-              title: const TrText('Sign in'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: usernameCtrl,
-                    decoration: const InputDecoration(
-                      label: TrText('Username'),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: passwordCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      label: TrText('Password'),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  if (error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        error!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const TrText('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final user = usernameCtrl.text.trim();
-                    final pass = passwordCtrl.text.trim();
-                    if (user.isEmpty || pass.isEmpty) {
-                      setState(() {
-                        error = 'Please enter username and password.';
-                      });
-                      return;
-                    }
-                    Navigator.of(ctx).pop(true);
-                  },
-                  child: const TrText('Continue'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    usernameCtrl.dispose();
-    passwordCtrl.dispose();
-    return result ?? false;
+  Future<void> _signInWithApple() async {
+    if (!mounted) return;
+    setState(() => _authWorking = true);
+    try {
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final oauth = OAuthProvider("apple.com").credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+      await FirebaseAuth.instance.signInWithCredential(oauth);
+    } on FirebaseAuthException catch (e) {
+      _snack(_authErrorMessage(e));
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return;
+      _snack('Apple sign-in failed.');
+    } finally {
+      if (mounted) setState(() => _authWorking = false);
+    }
   }
 
-  Future<bool> _promptSignUp() async {
-    final nameCtrl = TextEditingController();
-    final emailCtrl = TextEditingController();
-    final passwordCtrl = TextEditingController();
-    String? error;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return AlertDialog(
-              title: const TrText('Sign up'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(
-                      label: TrText('Name'),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: emailCtrl,
-                    decoration: const InputDecoration(
-                      label: TrText('Email'),
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: passwordCtrl,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      label: TrText('Password'),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  if (error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        error!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const TrText('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final name = nameCtrl.text.trim();
-                    final email = emailCtrl.text.trim();
-                    final pass = passwordCtrl.text.trim();
-                    if (name.isEmpty || email.isEmpty || pass.isEmpty) {
-                      setState(() {
-                        error = 'Please enter name, email, and password.';
-                      });
-                      return;
-                    }
-                    Navigator.of(ctx).pop(true);
-                  },
-                  child: const TrText('Continue'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    nameCtrl.dispose();
-    emailCtrl.dispose();
-    passwordCtrl.dispose();
-    return result ?? false;
+  Future<void> _signOut() async {
+    if (!mounted) return;
+    setState(() => _authWorking = true);
+    try {
+      await FirebaseAuth.instance.signOut();
+    } finally {
+      if (mounted) setState(() => _authWorking = false);
+    }
   }
 
   Widget _buildAuthGate() {
@@ -769,35 +711,67 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           'Continue to promote',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
+        if (_authUnlocked && _authLabel != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      TrText(
+                        'Signed in as',
+                        style:
+                            TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          _authLabel!,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: _authWorking ? null : _signOut,
+                  child: const TrText('Sign out'),
+                ),
+              ],
+            ),
+          ),
         const SizedBox(height: 8),
-        SegmentedButton<AuthChoice>(
-          segments: const [
-            ButtonSegment(
-              value: AuthChoice.signIn,
-              label: TrText('Sign in'),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            ElevatedButton.icon(
+              onPressed: _authWorking ? null : _signInWithGoogle,
+              icon: const Icon(Icons.login),
+              label: const TrText('Continue with Google'),
             ),
-            ButtonSegment(
-              value: AuthChoice.signUp,
-              label: TrText('Sign up'),
-            ),
-            ButtonSegment(
-              value: AuthChoice.guest,
-              label: TrText('Continue as guest'),
-            ),
+            if (Platform.isIOS)
+              ElevatedButton.icon(
+                onPressed: _authWorking ? null : _signInWithApple,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.apple),
+                label: const TrText('Continue with Apple'),
+              ),
           ],
-          selected:
-              _authChoice == AuthChoice.none ? const {} : {_authChoice},
-          emptySelectionAllowed: true,
-          onSelectionChanged: (value) {
-            if (value.isEmpty) return;
-            _handleAuthChoice(value.first);
-          },
         ),
         if (!_authUnlocked)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: TrText(
-              'Select an option to continue.',
+              'Sign in to continue.',
               style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
             ),
           ),

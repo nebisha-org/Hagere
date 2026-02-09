@@ -4,6 +4,9 @@ Date: 2026-01-29
 Owner: Nebyate Endalamaw
 Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch: v2)
 
+## ✅ Priority (must follow)
+- Focus on **fast release**. Avoid extra commentary or scope beyond the current focus.
+
 ## 📁 AllHabesha repo map
 - Frontend: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client
 - Backend: /Users/nebsha/FlutterProjects/AllHabesha/agerelige-backend
