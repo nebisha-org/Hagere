@@ -17,6 +17,8 @@ import '../state/stripe_mode_provider.dart';
 import '../state/translation_provider.dart';
 import '../widgets/tr_text.dart';
 
+enum AuthChoice { none, signIn, signUp, guest }
+
 class AddListingScreen extends ConsumerStatefulWidget {
   const AddListingScreen({super.key});
   static const routeName = '/add-listing';
@@ -39,6 +41,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   final _websiteCtrl = TextEditingController();
   final _youtubeCtrl = TextEditingController();
   final _tiktokCtrl = TextEditingController();
+
+  AuthChoice _authChoice = AuthChoice.none;
+  bool _authUnlocked = false;
   final _instagramCtrl = TextEditingController();
   final _facebookCtrl = TextEditingController();
   final _whatsappCtrl = TextEditingController();
@@ -570,6 +575,235 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     });
   }
 
+  Future<void> _handleAuthChoice(AuthChoice choice) async {
+    if (choice == AuthChoice.guest) {
+      setState(() {
+        _authChoice = choice;
+        _authUnlocked = true;
+      });
+      return;
+    }
+
+    if (choice == AuthChoice.signIn) {
+      final ok = await _promptSignIn();
+      if (!mounted) return;
+      setState(() {
+        _authChoice = ok ? choice : AuthChoice.none;
+        _authUnlocked = ok;
+      });
+      return;
+    }
+
+    if (choice == AuthChoice.signUp) {
+      final ok = await _promptSignUp();
+      if (!mounted) return;
+      setState(() {
+        _authChoice = ok ? choice : AuthChoice.none;
+        _authUnlocked = ok;
+      });
+      return;
+    }
+  }
+
+  Future<bool> _promptSignIn() async {
+    final usernameCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    String? error;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const TrText('Sign in'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: usernameCtrl,
+                    decoration: const InputDecoration(
+                      label: TrText('Username'),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      label: TrText('Password'),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const TrText('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final user = usernameCtrl.text.trim();
+                    final pass = passwordCtrl.text.trim();
+                    if (user.isEmpty || pass.isEmpty) {
+                      setState(() {
+                        error = 'Please enter username and password.';
+                      });
+                      return;
+                    }
+                    Navigator.of(ctx).pop(true);
+                  },
+                  child: const TrText('Continue'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    usernameCtrl.dispose();
+    passwordCtrl.dispose();
+    return result ?? false;
+  }
+
+  Future<bool> _promptSignUp() async {
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    String? error;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const TrText('Sign up'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      label: TrText('Name'),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailCtrl,
+                    decoration: const InputDecoration(
+                      label: TrText('Email'),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      label: TrText('Password'),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const TrText('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final name = nameCtrl.text.trim();
+                    final email = emailCtrl.text.trim();
+                    final pass = passwordCtrl.text.trim();
+                    if (name.isEmpty || email.isEmpty || pass.isEmpty) {
+                      setState(() {
+                        error = 'Please enter name, email, and password.';
+                      });
+                      return;
+                    }
+                    Navigator.of(ctx).pop(true);
+                  },
+                  child: const TrText('Continue'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    nameCtrl.dispose();
+    emailCtrl.dispose();
+    passwordCtrl.dispose();
+    return result ?? false;
+  }
+
+  Widget _buildAuthGate() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const TrText(
+          'Continue to promote',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<AuthChoice>(
+          segments: const [
+            ButtonSegment(
+              value: AuthChoice.signIn,
+              label: TrText('Sign in'),
+            ),
+            ButtonSegment(
+              value: AuthChoice.signUp,
+              label: TrText('Sign up'),
+            ),
+            ButtonSegment(
+              value: AuthChoice.guest,
+              label: TrText('Continue as guest'),
+            ),
+          ],
+          selected:
+              _authChoice == AuthChoice.none ? const {} : {_authChoice},
+          onSelectionChanged: (value) {
+            if (value.isEmpty) return;
+            _handleAuthChoice(value.first);
+          },
+        ),
+        if (!_authUnlocked)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: TrText(
+              'Select an option to continue.',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     _log('BUILD: saving=$_saving promoting=$_promoting');
@@ -604,6 +838,300 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           ),
         );
 
+    final formFields = <Widget>[
+      DropdownButtonFormField<AppCategory>(
+        key: const Key('add_listing_category'),
+        value: hasCategories ? selectedResolved : null,
+        decoration: const InputDecoration(
+          label: TrText('Category *'),
+          border: OutlineInputBorder(),
+        ),
+        items: categories
+            .map(
+              (c) => DropdownMenuItem(
+                value: c,
+                child: TrText('${c.emoji} ${c.title}'),
+              ),
+            )
+            .toList(),
+        onChanged: hasCategories
+            ? (v) {
+                _log('Category changed => ${v?.id}');
+                ref.read(selectedCategoryProvider.notifier).state = v;
+              }
+            : null,
+        validator: (v) => v == null ? translator.tr('Required') : null,
+      ),
+      if (!hasCategories)
+        const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: TrText(
+            'No categories available. Check categoriesProvider.',
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+      const SizedBox(height: 12),
+      sectionTitle('Business Details'),
+      TextFormField(
+        key: const Key('add_listing_name'),
+        controller: _nameCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Business name *'),
+          border: OutlineInputBorder(),
+        ),
+        validator: (v) =>
+            v == null || v.trim().isEmpty ? translator.tr('Required') : null,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _descriptionCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Description'),
+          border: OutlineInputBorder(),
+        ),
+        minLines: 3,
+        maxLines: 5,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _tagsCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Tags / keywords'),
+          helper: TrText('Comma-separated (e.g., injera, coffee, catering)'),
+          border: OutlineInputBorder(),
+        ),
+        maxLines: 2,
+      ),
+      const SizedBox(height: 12),
+      sectionTitle('Photos'),
+      Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        children: [
+          OutlinedButton.icon(
+            onPressed: _addFromCamera,
+            icon: const Icon(Icons.photo_camera),
+            label: const TrText('Take photo'),
+          ),
+          OutlinedButton.icon(
+            onPressed: _addFromGallery,
+            icon: const Icon(Icons.photo_library),
+            label: const TrText('Pick from gallery'),
+          ),
+          if (_pickedImages.isNotEmpty)
+            OutlinedButton.icon(
+              onPressed: () => setState(() => _pickedImages.clear()),
+              icon: const Icon(Icons.delete_outline),
+              label: const TrText('Clear photos'),
+            ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      _buildPhotoPreview(),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _photoUrlsCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Photo URLs'),
+          helper: TrText('Paste one or more image links, separated by commas'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.url,
+        maxLines: 2,
+      ),
+      const SizedBox(height: 12),
+      sectionTitle('Contact'),
+      TextFormField(
+        controller: _phoneCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Phone (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.phone,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _emailCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Email (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.emailAddress,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _whatsappCtrl,
+        decoration: const InputDecoration(
+          label: TrText('WhatsApp (optional)'),
+          helper: TrText('Include country code (e.g., +1 202 555 0123)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.phone,
+      ),
+      const SizedBox(height: 12),
+      sectionTitle('Location'),
+      TextFormField(
+        controller: _addressCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Address (optional)'),
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 20),
+      TextFormField(
+        controller: _neighborhoodCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Neighborhood / Area'),
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 12),
+      OutlinedButton.icon(
+        onPressed: _chooseCities,
+        icon: const Icon(Icons.location_city),
+        label: const TrText('Pick from 50 cities'),
+      ),
+      if (_selectedCities.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: _selectedCities
+                .map(
+                  (c) => Chip(
+                    label: TrText(c.label),
+                    onDeleted: () {
+                      setState(() {
+                        _selectedCities =
+                            _selectedCities.where((e) => e.id != c.id).toList();
+                        _syncCityFieldsFromSelection();
+                      });
+                    },
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      if (_selectedCities.length > 1)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: TrText(
+            'Multiple cities selected. City/State/Country fields are optional.',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+        ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _cityCtrl,
+        decoration: const InputDecoration(
+          label: TrText('City (where it should appear)'),
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _stateCtrl,
+        decoration: const InputDecoration(
+          label: TrText('State / Region'),
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _countryCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Country'),
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _mapLinkCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Google Maps link (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.url,
+      ),
+      const SizedBox(height: 12),
+      sectionTitle('Online Links'),
+      TextFormField(
+        controller: _websiteCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Website (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.url,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _instagramCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Instagram (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.url,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _facebookCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Facebook (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.url,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _youtubeCtrl,
+        decoration: const InputDecoration(
+          label: TrText('YouTube link (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.url,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _tiktokCtrl,
+        decoration: const InputDecoration(
+          label: TrText('TikTok link (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.url,
+      ),
+      const SizedBox(height: 12),
+      sectionTitle('Extras'),
+      TextFormField(
+        controller: _hoursCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Hours (optional)'),
+          helper: TrText('e.g., Mon–Sat 9am–8pm'),
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _priceCtrl,
+        decoration: const InputDecoration(
+          label: TrText('Price range (optional)'),
+          helper: TrText(r'e.g., $, $$, $$$'),
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 20),
+      ElevatedButton(
+        onPressed: (_saving || _promoting) ? null : _onSave,
+        child: _saving ? buttonSpinner() : const TrText('Save'),
+      ),
+      const SizedBox(height: 12),
+      OutlinedButton(
+        key: const Key('add_listing_save_promote'),
+        onPressed: (_saving || _promoting) ? null : _onSaveAndPromote,
+        child: _promoting ? buttonSpinner() : const TrText('Save & Promote'),
+      ),
+    ];
+
     return Scaffold(
       appBar: AppBar(title: const TrText('Add your listing')),
       body: Padding(
@@ -612,303 +1140,17 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              DropdownButtonFormField<AppCategory>(
-                key: const Key('add_listing_category'),
-                value: hasCategories ? selectedResolved : null,
-                decoration: const InputDecoration(
-                  label: TrText('Category *'),
-                  border: OutlineInputBorder(),
-                ),
-                items: categories
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c,
-                        child: TrText('${c.emoji} ${c.title}'),
-                      ),
-                    )
-                    .toList(),
-                onChanged: hasCategories
-                    ? (v) {
-                        _log('Category changed => ${v?.id}');
-                        ref.read(selectedCategoryProvider.notifier).state = v;
-                      }
-                    : null,
-                validator: (v) =>
-                    v == null ? translator.tr('Required') : null,
-              ),
-              if (!hasCategories)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: TrText(
-                    'No categories available. Check categoriesProvider.',
-                    style: TextStyle(color: Colors.red),
+              _buildAuthGate(),
+              const SizedBox(height: 12),
+              AbsorbPointer(
+                absorbing: !_authUnlocked,
+                child: Opacity(
+                  opacity: _authUnlocked ? 1 : 0.4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: formFields,
                   ),
                 ),
-              const SizedBox(height: 12),
-              sectionTitle('Business Details'),
-              TextFormField(
-                key: const Key('add_listing_name'),
-                controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Business name *'),
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => v == null || v.trim().isEmpty
-                    ? translator.tr('Required')
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descriptionCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Description'),
-                  border: OutlineInputBorder(),
-                ),
-                minLines: 3,
-                maxLines: 5,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _tagsCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Tags / keywords'),
-                  helper: TrText(
-                      'Comma-separated (e.g., injera, coffee, catering)'),
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-              sectionTitle('Photos'),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _addFromCamera,
-                    icon: const Icon(Icons.photo_camera),
-                    label: const TrText('Take photo'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _addFromGallery,
-                    icon: const Icon(Icons.photo_library),
-                    label: const TrText('Pick from gallery'),
-                  ),
-                  if (_pickedImages.isNotEmpty)
-                    OutlinedButton.icon(
-                      onPressed: () => setState(() => _pickedImages.clear()),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const TrText('Clear photos'),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _buildPhotoPreview(),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _photoUrlsCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Photo URLs'),
-                  helper: TrText(
-                      'Paste one or more image links, separated by commas'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-              sectionTitle('Contact'),
-              TextFormField(
-                controller: _phoneCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Phone (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Email (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _whatsappCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('WhatsApp (optional)'),
-                  helper:
-                      TrText('Include country code (e.g., +1 202 555 0123)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 12),
-              sectionTitle('Location'),
-              TextFormField(
-                controller: _addressCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Address (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _neighborhoodCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Neighborhood / Area'),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _chooseCities,
-                icon: const Icon(Icons.location_city),
-                label: const TrText('Pick from 50 cities'),
-              ),
-              if (_selectedCities.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: _selectedCities
-                        .map(
-                          (c) => Chip(
-                            label: TrText(c.label),
-                            onDeleted: () {
-                              setState(() {
-                                _selectedCities =
-                                    _selectedCities.where((e) => e.id != c.id).toList();
-                                _syncCityFieldsFromSelection();
-                              });
-                            },
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              if (_selectedCities.length > 1)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: TrText(
-                    'Multiple cities selected. City/State/Country fields are optional.',
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _cityCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('City (where it should appear)'),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _stateCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('State / Region'),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _countryCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Country'),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _mapLinkCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Google Maps link (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 12),
-              sectionTitle('Online Links'),
-              TextFormField(
-                controller: _websiteCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Website (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _instagramCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Instagram (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _facebookCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Facebook (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _youtubeCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('YouTube link (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _tiktokCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('TikTok link (optional)'),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 12),
-              sectionTitle('Extras'),
-              TextFormField(
-                controller: _hoursCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Hours (optional)'),
-                  helper: TrText('e.g., Mon–Sat 9am–8pm'),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _priceCtrl,
-                decoration: const InputDecoration(
-                  label: TrText('Price range (optional)'),
-                  helper: TrText(r'e.g., $, $$, $$$'),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: (_saving || _promoting) ? null : _onSave,
-                child: _saving ? buttonSpinner() : const TrText('Save'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                key: const Key('add_listing_save_promote'),
-                onPressed: (_saving || _promoting) ? null : _onSaveAndPromote,
-                child: _promoting
-                    ? buttonSpinner()
-                    : const TrText('Save & Promote'),
               ),
             ],
           ),
