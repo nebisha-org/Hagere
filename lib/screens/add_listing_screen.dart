@@ -787,6 +787,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           ],
           selected:
               _authChoice == AuthChoice.none ? const {} : {_authChoice},
+          emptySelectionAllowed: true,
           onSelectionChanged: (value) {
             if (value.isEmpty) return;
             _handleAuthChoice(value.first);
