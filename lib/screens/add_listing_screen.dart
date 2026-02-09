@@ -574,8 +574,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   Widget build(BuildContext context) {
     _log('BUILD: saving=$_saving promoting=$_promoting');
 
-    final categories = ref.watch(resolvedCategoriesProvider);
-    final selected = ref.watch(selectedCategoryProvider);
+    final List<AppCategory> categories =
+        ref.watch(resolvedCategoriesProvider);
+    final AppCategory? selected = ref.watch(selectedCategoryProvider);
     final selectedResolved = selected == null
         ? null
         : categories.firstWhere(

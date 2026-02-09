@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/overrides_api.dart';
+import '../models/category.dart';
 import 'category_providers.dart';
 import 'translation_provider.dart';
 
