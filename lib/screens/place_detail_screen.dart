@@ -297,6 +297,11 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                 entityType: 'entity',
                 entityId: entityId,
                 fieldKey: 'name',
+                onUpdated: (v) {
+                  setState(() {
+                    e['name'] = v;
+                  });
+                },
                 style: const TextStyle(
                   color: Colors.white,
                   shadows: [

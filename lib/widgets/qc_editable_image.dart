@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../cache/entities_cache.dart';
 import '../state/qc_mode.dart';
 import '../state/override_providers.dart';
 import '../state/providers.dart';
@@ -62,6 +63,7 @@ class QcEditableImage extends ConsumerWidget {
                 );
                 if (updated == null) return;
                 onUpdated?.call(updated);
+                EntitiesCache.clearAll();
                 ref.invalidate(entitiesRawProvider);
                 ref.invalidate(categoryOverridesProvider);
                 ref.invalidate(carouselItemsProvider);

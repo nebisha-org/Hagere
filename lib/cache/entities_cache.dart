@@ -31,6 +31,11 @@ class EntitiesCache {
     await box.put(cacheKey, jsonEncode(payload));
   }
 
+  static Future<void> clearAll() async {
+    final box = Hive.box(boxName);
+    await box.clear();
+  }
+
   static bool isFresh(Map<String, dynamic> cached, Duration ttl) {
     final ts = (cached['updatedAt'] ?? 0) as int;
     final ageMs = DateTime.now().millisecondsSinceEpoch - ts;
