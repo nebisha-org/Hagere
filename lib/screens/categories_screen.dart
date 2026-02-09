@@ -8,12 +8,15 @@ import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
 import '../state/translation_provider.dart';
 import '../state/translation_strings.dart';
+import '../state/qc_mode.dart';
+import '../state/override_providers.dart';
 import '../models/carousel_item.dart';
 
 import 'entities_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_carousel.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
+import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
 // keep import even if hidden, no harm
 import 'package:agerelige_flutter_client/widgets/promote_home_tile.dart';
 import 'package:agerelige_flutter_client/screens/places_v2_list_screen.dart';
@@ -33,7 +36,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
     try {
       final api = ref.read(entitiesApiProvider);
-      final entity = await api.fetchEntityById(entityId);
+      final lang = ref.read(translationControllerProvider).language.code;
+      final entity = await api.fetchEntityById(entityId, locale: lang);
       if (!mounted) return;
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -76,6 +80,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     ref.invalidate(homeSponsoredProvider);
     final loc = ref.watch(userLocationProvider);
     final catsAsync = ref.watch(availableCategoriesProvider);
+    final catOverridesAsync = ref.watch(categoryOverridesProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
     final carouselAsync = ref.watch(carouselItemsProvider);
@@ -101,6 +106,21 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const TrText('All Habesha'),
+        actions: kQcMode
+            ? [
+                IconButton(
+                  icon: Icon(
+                    ref.watch(qcEditModeProvider)
+                        ? Icons.edit_off
+                        : Icons.edit,
+                  ),
+                  onPressed: () {
+                    final next = !ref.read(qcEditModeProvider);
+                    ref.read(qcEditModeProvider.notifier).state = next;
+                  },
+                ),
+              ]
+            : null,
       ),
       body: catsAsync.when(
         loading: () => const Center(
@@ -129,6 +149,19 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           ),
         ),
         data: (cats) {
+          final overrides =
+              catOverridesAsync.maybeWhen(data: (v) => v, orElse: () => {});
+          final displayCats = cats
+              .map((c) {
+                final o = overrides[c.id] ?? const <String, String>{};
+                final title = o['title']?.toString().trim();
+                final emoji = o['emoji']?.toString().trim();
+                return c.copyWith(
+                  title: (title == null || title.isEmpty) ? c.title : title,
+                  emoji: (emoji == null || emoji.isEmpty) ? c.emoji : emoji,
+                );
+              })
+              .toList();
           // rows:
           // 0                => Language toggle
           // 0..cats.length-1 => categories
@@ -138,7 +171,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final showLanguageToggle = true;
           final languageToggleIndex = 0;
           final categoriesStart = showLanguageToggle ? 1 : 0;
-          final categoriesCount = cats.length;
+          final categoriesCount = displayCats.length;
           final addListingIndex = categoriesStart + categoriesCount;
           final sponsoredIndex = categoriesStart + categoriesCount + 1;
           final showStripeToggle = !kReleaseMode;
@@ -197,14 +230,22 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 // 1) Category rows
                 if (i >= categoriesStart &&
                     i < categoriesStart + categoriesCount) {
-                  final c = cats[i - categoriesStart];
+                  final c = displayCats[i - categoriesStart];
                   return ListTile(
-                    leading: TrText(
+                    leading: QcEditableText(
                       c.emoji,
+                      entityType: 'category',
+                      entityId: c.id,
+                      fieldKey: 'emoji',
                       translate: false,
                       style: const TextStyle(fontSize: 22),
                     ),
-                    title: TrText(c.title),
+                    title: QcEditableText(
+                      c.title,
+                      entityType: 'category',
+                      entityId: c.id,
+                      fieldKey: 'title',
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       ref.read(selectedCategoryProvider.notifier).state = c;
@@ -292,18 +333,40 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                             ),
                           ),
                           ...items.take(5).map(
-                                (e) => Card(
-                                  child: ListTile(
-                                    leading: const Icon(Icons.star),
-                                    title:
-                                        TrText((e['name'] ?? '').toString()),
-                                    subtitle:
-                                        TrText((e['categoryId'] ?? '').toString()),
-                                    onTap: () {
-                                      // OPTIONAL: later route to details or category
-                                    },
-                                  ),
-                                ),
+                                (e) {
+                                  final entityId = (e['id'] ??
+                                          e['item_id'] ??
+                                          e['itemId'] ??
+                                          '')
+                                      .toString();
+                                  final name = (e['name'] ?? '').toString();
+                                  final categoryId =
+                                      (e['categoryId'] ?? '').toString();
+                                  return Card(
+                                    child: ListTile(
+                                      leading: const Icon(Icons.star),
+                                      title: entityId.isEmpty
+                                          ? TrText(name)
+                                          : QcEditableText(
+                                              name,
+                                              entityType: 'entity',
+                                              entityId: entityId,
+                                              fieldKey: 'name',
+                                            ),
+                                      subtitle: entityId.isEmpty
+                                          ? TrText(categoryId)
+                                          : QcEditableText(
+                                              categoryId,
+                                              entityType: 'entity',
+                                              entityId: entityId,
+                                              fieldKey: 'categoryId',
+                                            ),
+                                      onTap: () {
+                                        // OPTIONAL: later route to details or category
+                                      },
+                                    ),
+                                  );
+                                },
                               ),
                           // Hidden sponsor tile (not removed) — just keep it disabled:
                           // If you want it back later, change SizedBox.shrink() to the tile.

@@ -10,7 +10,7 @@ enum AppLanguage { english, amharic }
 
 extension AppLanguageX on AppLanguage {
   String get code => this == AppLanguage.english ? 'en' : 'am';
-  String get label => this == AppLanguage.english ? 'English' : 'Amharic';
+  String get label => this == AppLanguage.english ? 'English' : 'አማርኛ';
 }
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {

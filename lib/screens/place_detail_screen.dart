@@ -10,6 +10,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../utils/geo.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
+import '../state/qc_mode.dart';
+import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
+import 'package:agerelige_flutter_client/widgets/qc_editable_image.dart';
 
 class PlaceDetailScreen extends ConsumerStatefulWidget {
   const PlaceDetailScreen({super.key, required this.entity});
@@ -78,10 +81,16 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
       }
     }
 
+    if (e['images'] is List) {
+      for (final v in e['images'] as List) {
+        addUrl(v);
+      }
+    }
     addUrl(e['image']);
     addUrl(e['photo']);
     addUrl(e['thumbnail']);
     addUrl(e['logo']);
+    addUrl(e['image_url']);
 
     final raw = e['raw'];
     if (raw is Map) {
@@ -118,6 +127,8 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   }
 
   String? _openingHours(Map<String, dynamic> e) {
+    final direct = _str(e['opening_hours']);
+    if (direct.isNotEmpty) return direct;
     final raw = e['raw'];
     if (raw is Map) {
       final tags = raw['tags'];
@@ -239,6 +250,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final e = widget.entity;
+    final entityId = _str(e['id'] ?? e['place_id']);
     final name = _str(e['name']);
     final address = _address(e);
     final phone = _phone(e);
@@ -266,10 +278,25 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                 icon: const Icon(Icons.share),
                 onPressed: () => _share(e),
               ),
+              if (kQcMode)
+                IconButton(
+                  icon: Icon(
+                    ref.watch(qcEditModeProvider)
+                        ? Icons.edit_off
+                        : Icons.edit,
+                  ),
+                  onPressed: () {
+                    final next = !ref.read(qcEditModeProvider);
+                    ref.read(qcEditModeProvider.notifier).state = next;
+                  },
+                ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              title: TrText(
+              title: QcEditableText(
                 name.isEmpty ? 'Details' : name,
+                entityType: 'entity',
+                entityId: entityId,
+                fieldKey: 'name',
                 style: const TextStyle(
                   color: Colors.white,
                   shadows: [
@@ -285,10 +312,21 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   images.isNotEmpty
-                      ? Image.network(
-                          images.first,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _fallbackHeader(),
+                      ? QcEditableImage(
+                          entityType: 'entity',
+                          entityId: entityId,
+                          fieldKey: 'image',
+                          imageUrl: images.first,
+                          onUpdated: (v) {
+                            setState(() {
+                              e['image'] = v;
+                            });
+                          },
+                          child: Image.network(
+                            images.first,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _fallbackHeader(),
+                          ),
                         )
                       : _fallbackHeader(),
                   const DecoratedBox(
@@ -321,11 +359,27 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                           _InfoRow(
                             icon: Icons.location_on,
                             text: address,
+                            entityType: 'entity',
+                            entityId: entityId,
+                            fieldKey: 'address',
+                            onUpdated: (v) {
+                              setState(() {
+                                e['address'] = v;
+                              });
+                            },
                           ),
                         if (phone != null)
                           _InfoRow(
                             icon: Icons.phone,
                             text: phone,
+                            entityType: 'entity',
+                            entityId: entityId,
+                            fieldKey: 'phone',
+                            onUpdated: (v) {
+                              setState(() {
+                                e['phone'] = v;
+                              });
+                            },
                             onTap: () => launchUrl(
                               Uri.parse('tel:${phone.trim()}'),
                               mode: LaunchMode.externalApplication,
@@ -335,6 +389,14 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                           _InfoRow(
                             icon: Icons.public,
                             text: website,
+                            entityType: 'entity',
+                            entityId: entityId,
+                            fieldKey: 'website',
+                            onUpdated: (v) {
+                              setState(() {
+                                e['website'] = v;
+                              });
+                            },
                             onTap: () => launchUrl(
                               Uri.parse(website),
                               mode: LaunchMode.externalApplication,
@@ -347,7 +409,18 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                       title: 'Details',
                       children: [
                         if (hours != null)
-                          _InfoRow(icon: Icons.schedule, text: hours),
+                          _InfoRow(
+                            icon: Icons.schedule,
+                            text: hours,
+                            entityType: 'entity',
+                            entityId: entityId,
+                            fieldKey: 'opening_hours',
+                            onUpdated: (v) {
+                              setState(() {
+                                e['opening_hours'] = v;
+                              });
+                            },
+                          ),
                         if (distance != null)
                           _InfoRow(
                             icon: Icons.near_me,
@@ -358,9 +431,29 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                             spacing: 8,
                             runSpacing: 8,
                             children: categories
+                                .asMap()
+                                .entries
                                 .map(
-                                  (c) => Chip(
-                                    label: TrText(c),
+                                  (entry) => Chip(
+                                    label: QcEditableText(
+                                      entry.value,
+                                      entityType: 'entity',
+                                      entityId: entityId,
+                                      fieldKey: 'categories[${entry.key}]',
+                                      onUpdated: (v) {
+                                        setState(() {
+                                          final list =
+                                              (e['categories'] as List?)
+                                                      ?.toList() ??
+                                                  [];
+                                          while (list.length <= entry.key) {
+                                            list.add('');
+                                          }
+                                          list[entry.key] = v;
+                                          e['categories'] = list;
+                                        });
+                                      },
+                                    ),
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 6,
                                     ),
@@ -424,16 +517,35 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                                 const SizedBox(width: 12),
                             itemBuilder: (context, i) => ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                images[i],
-                                width: 220,
-                                height: 160,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
+                              child: QcEditableImage(
+                                entityType: 'entity',
+                                entityId: entityId,
+                                fieldKey: 'images[$i]',
+                                imageUrl: images[i],
+                                onUpdated: (v) {
+                                  setState(() {
+                                    final list =
+                                        (e['images'] as List?)?.toList() ?? [];
+                                    while (list.length <= i) {
+                                      list.add('');
+                                    }
+                                    list[i] = v;
+                                    e['images'] = list;
+                                  });
+                                },
+                                child: Image.network(
+                                  images[i],
                                   width: 220,
                                   height: 160,
-                                  color: Colors.grey.shade200,
-                                  child: const Center(child: Icon(Icons.photo)),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 220,
+                                    height: 160,
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Icon(Icons.photo),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -528,11 +640,23 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.text, this.onTap});
+  const _InfoRow({
+    required this.icon,
+    required this.text,
+    this.onTap,
+    this.entityType,
+    this.entityId,
+    this.fieldKey,
+    this.onUpdated,
+  });
 
   final IconData icon;
   final String text;
   final VoidCallback? onTap;
+  final String? entityType;
+  final String? entityId;
+  final String? fieldKey;
+  final void Function(String value)? onUpdated;
 
   @override
   Widget build(BuildContext context) {
@@ -541,7 +665,17 @@ class _InfoRow extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: Colors.grey.shade700),
         const SizedBox(width: 10),
-        Expanded(child: TrText(text)),
+        Expanded(
+          child: (entityType != null && entityId != null && fieldKey != null)
+              ? QcEditableText(
+                  text,
+                  entityType: entityType!,
+                  entityId: entityId!,
+                  fieldKey: fieldKey!,
+                  onUpdated: onUpdated,
+                )
+              : TrText(text),
+        ),
       ],
     );
 

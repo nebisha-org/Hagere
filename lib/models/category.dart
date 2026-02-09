@@ -10,4 +10,18 @@ class AppCategory {
     required this.emoji,
     required this.tags,
   });
+
+  AppCategory copyWith({
+    String? id,
+    String? title,
+    String? emoji,
+    List<String>? tags,
+  }) {
+    return AppCategory(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      emoji: emoji ?? this.emoji,
+      tags: tags ?? this.tags,
+    );
+  }
 }

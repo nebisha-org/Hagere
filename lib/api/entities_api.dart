@@ -9,8 +9,13 @@ class EntitiesApi {
   final String baseUrl = apiBaseUrl;
 
   /// HOME SPONSORED
-  Future<List<Map<String, dynamic>>> getHomeSponsored() async {
-    final uri = Uri.parse('$apiBaseUrl/entities/home-sponsored');
+  Future<List<Map<String, dynamic>>> getHomeSponsored({String? locale}) async {
+    final query = <String, String>{};
+    if (locale != null && locale.trim().isNotEmpty) {
+      query['locale'] = locale.trim();
+    }
+    final uri = Uri.parse('$apiBaseUrl/entities/home-sponsored')
+        .replace(queryParameters: query.isEmpty ? null : query);
     final res = await http.get(uri, headers: {'Accept': 'application/json'});
     if (res.statusCode != 200) throw Exception(res.body);
 
@@ -32,6 +37,7 @@ class EntitiesApi {
     double radiusKm = 100,
     int? limit,
     bool serverSideGeo = false,
+    String? locale,
   }) async {
     final query = <String, String>{
       'lat': lat.toString(),
@@ -43,6 +49,9 @@ class EntitiesApi {
     }
     if (serverSideGeo) {
       query['serverSideGeo'] = 'true';
+    }
+    if (locale != null && locale.trim().isNotEmpty) {
+      query['locale'] = locale.trim();
     }
 
     final uri =
@@ -76,8 +85,15 @@ class EntitiesApi {
   }
 
   /// ENTITY BY ID
-  Future<Map<String, dynamic>> fetchEntityById(String entityId) async {
-    final uri = Uri.parse('$apiBaseUrl/entities/$entityId');
+  Future<Map<String, dynamic>> fetchEntityById(
+    String entityId, {
+    String? locale,
+  }) async {
+    final uri = Uri.parse('$apiBaseUrl/entities/$entityId').replace(
+      queryParameters: (locale != null && locale.trim().isNotEmpty)
+          ? {'locale': locale.trim()}
+          : null,
+    );
     final res = await http.get(uri, headers: {'Accept': 'application/json'});
     if (res.statusCode != 200) throw Exception(res.body);
 
@@ -97,10 +113,13 @@ class EntitiesApi {
     int? limit,
     Duration ttl = const Duration(hours: 12),
     bool forceRefresh = false,
+    String? locale,
   }) async {
     final box = Hive.box(EntitiesCache.boxName);
     final limitKey = limit?.toString() ?? 'all';
-    final cacheKey = 'entities::$regionKey::r$radiusKm::l$limitKey';
+    final localeKey = (locale ?? 'en').toLowerCase();
+    final cacheKey =
+        'entities::$regionKey::r$radiusKm::l$limitKey::lang$localeKey';
 
     final cached = EntitiesCache.read(box, cacheKey);
     if (!forceRefresh && cached != null && EntitiesCache.isFresh(cached, ttl)) {
@@ -117,6 +136,7 @@ class EntitiesApi {
         lon: lon,
         radiusKm: radiusKm,
         limit: limit,
+        locale: locale,
       );
 
       await EntitiesCache.write(

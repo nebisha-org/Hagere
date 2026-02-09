@@ -6,11 +6,13 @@ import '../utils/geo.dart';
 import '../state/category_providers.dart';
 import '../state/location_name_provider.dart';
 import '../state/translation_provider.dart';
+import '../state/qc_mode.dart';
 import 'package:location/location.dart';
 import 'add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
 import 'package:agerelige_flutter_client/widgets/promote_category_tile.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
+import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
 
 class EntitiesScreen extends ConsumerWidget {
   const EntitiesScreen({super.key});
@@ -26,7 +28,14 @@ class EntitiesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: TrText(selectedCategory?.title ?? 'Nearby'),
+        title: selectedCategory == null
+            ? const TrText('Nearby')
+            : QcEditableText(
+                selectedCategory.title,
+                entityType: 'category',
+                entityId: selectedCategory.id,
+                fieldKey: 'title',
+              ),
         actions: [
           IconButton(
             onPressed: () {
@@ -35,6 +44,16 @@ class EntitiesScreen extends ConsumerWidget {
             },
             icon: const Icon(Icons.refresh),
           ),
+          if (kQcMode)
+            IconButton(
+              icon: Icon(
+                ref.watch(qcEditModeProvider) ? Icons.edit_off : Icons.edit,
+              ),
+              onPressed: () {
+                final next = !ref.read(qcEditModeProvider);
+                ref.read(qcEditModeProvider.notifier).state = next;
+              },
+            ),
         ],
       ),
       body: Padding(
@@ -128,6 +147,9 @@ class EntitiesScreen extends ConsumerWidget {
                                 // NORMAL ENTITY ROW
                                 // -----------------------------
                                 final e = items[i];
+                                final entityId =
+                                    (e['id'] ?? e['place_id'] ?? '')
+                                        .toString();
                                 final phone =
                                     (e['contactPhone'] ?? e['phone'] ?? '')
                                         .toString()
@@ -157,9 +179,12 @@ class EntitiesScreen extends ConsumerWidget {
                                 }
 
                                 return ListTile(
-                                  title:
-                                      TrText(
-                                          e['name']?.toString() ?? 'Unknown'),
+                                  title: QcEditableText(
+                                    e['name']?.toString() ?? 'Unknown',
+                                    entityType: 'entity',
+                                    entityId: entityId,
+                                    fieldKey: 'name',
+                                  ),
                                   subtitle: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -167,8 +192,19 @@ class EntitiesScreen extends ConsumerWidget {
                                       if ((e['address']?.toString() ?? '')
                                           .trim()
                                           .isNotEmpty)
-                                        TrText(e['address'].toString()),
-                                      if (phone.isNotEmpty) TrText(phone),
+                                        QcEditableText(
+                                          e['address'].toString(),
+                                          entityType: 'entity',
+                                          entityId: entityId,
+                                          fieldKey: 'address',
+                                        ),
+                                      if (phone.isNotEmpty)
+                                        QcEditableText(
+                                          phone,
+                                          entityType: 'entity',
+                                          entityId: entityId,
+                                          fieldKey: 'phone',
+                                        ),
                                       const SizedBox(height: 2),
                                       TrText(
                                         distanceText,
@@ -179,7 +215,12 @@ class EntitiesScreen extends ConsumerWidget {
                                     ],
                                   ),
                                   trailing:
-                                      TrText(e['subtype']?.toString() ?? ''),
+                                      QcEditableText(
+                                        e['subtype']?.toString() ?? '',
+                                        entityType: 'entity',
+                                        entityId: entityId,
+                                        fieldKey: 'subtype',
+                                      ),
                                   isThreeLine: true,
                                 );
                               },

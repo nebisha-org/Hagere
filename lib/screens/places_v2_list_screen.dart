@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state/providers.dart';
+import '../state/qc_mode.dart';
 import 'place_detail_screen.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
+import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
 
 class Entity {
   final String name;
@@ -72,7 +74,24 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
     final entitiesAsync = ref.watch(entitiesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const TrText('Nearby Businesses')),
+      appBar: AppBar(
+        title: const TrText('Nearby Businesses'),
+        actions: kQcMode
+            ? [
+                IconButton(
+                  icon: Icon(
+                    ref.watch(qcEditModeProvider)
+                        ? Icons.edit_off
+                        : Icons.edit,
+                  ),
+                  onPressed: () {
+                    final next = !ref.read(qcEditModeProvider);
+                    ref.read(qcEditModeProvider.notifier).state = next;
+                  },
+                ),
+              ]
+            : null,
+      ),
       body: (loc?.latitude == null || loc?.longitude == null)
           ? const Center(
               child: Column(
@@ -116,14 +135,32 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                   itemBuilder: (context, i) {
                     final raw = items[i];
                     final e = Entity.fromJson(raw);
+                    final entityId = (raw['id'] ?? raw['place_id'] ?? '').toString();
 
                     return ListTile(
-                      title: TrText(e.name),
+                      title: QcEditableText(
+                        e.name,
+                        entityType: 'entity',
+                        entityId: entityId,
+                        fieldKey: 'name',
+                      ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (e.address.isNotEmpty) TrText(e.address),
-                          if (e.phone.isNotEmpty) TrText(e.phone),
+                          if (e.address.isNotEmpty)
+                            QcEditableText(
+                              e.address,
+                              entityType: 'entity',
+                              entityId: entityId,
+                              fieldKey: 'address',
+                            ),
+                          if (e.phone.isNotEmpty)
+                            QcEditableText(
+                              e.phone,
+                              entityType: 'entity',
+                              entityId: entityId,
+                              fieldKey: 'phone',
+                            ),
                         ],
                       ),
                       trailing: e.phone.isEmpty

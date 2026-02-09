@@ -11,6 +11,7 @@ class CarouselApi {
     String? city,
     String? state,
     int limit = 20,
+    String? locale,
   }) async {
     final params = <String, String>{
       'limit': limit.toString(),
@@ -20,6 +21,9 @@ class CarouselApi {
     }
     if (state != null && state.trim().isNotEmpty) {
       params['state'] = state.trim();
+    }
+    if (locale != null && locale.trim().isNotEmpty) {
+      params['locale'] = locale.trim();
     }
 
     final uri =

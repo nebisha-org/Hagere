@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/carousel_item.dart';
 import 'tr_text.dart';
+import 'qc_editable_text.dart';
+import 'qc_editable_image.dart';
 
 class PromoTileData {
   PromoTileData({
@@ -17,6 +19,8 @@ class PromoTileData {
     this.ctaLabel,
     this.ctaUrl,
     this.onTap,
+    this.entityType,
+    this.entityId,
   });
 
   final String title;
@@ -28,6 +32,8 @@ class PromoTileData {
   final String? ctaLabel;
   final String? ctaUrl;
   final VoidCallback? onTap;
+  final String? entityType;
+  final String? entityId;
 }
 
 class AddListingCarousel extends StatefulWidget {
@@ -97,6 +103,8 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
             ctaUrl:
                 hasEntityTap ? null : (item.ctaUrl.isEmpty ? null : item.ctaUrl),
             onTap: hasEntityTap ? () => widget.onEntityTap!(item) : null,
+            entityType: 'carousel',
+            entityId: item.itemId,
           ),
         );
       }
@@ -209,6 +217,7 @@ class _PromoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasImage = data.imageUrl != null && data.imageUrl!.isNotEmpty;
+    final canEdit = data.entityType != null && data.entityId != null;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: Material(
@@ -244,11 +253,25 @@ class _PromoTile extends StatelessWidget {
                 children: [
                   if (hasImage && !_disableRemoteImages)
                     Positioned.fill(
-                      child: Image.network(
-                        data.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
+                      child: canEdit
+                          ? QcEditableImage(
+                              entityType: data.entityType!,
+                              entityId: data.entityId!,
+                              fieldKey: 'image_url',
+                              imageUrl: data.imageUrl!,
+                              child: Image.network(
+                                data.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            )
+                          : Image.network(
+                              data.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const SizedBox.shrink(),
+                            ),
                     ),
                   Positioned.fill(
                     child: DecoratedBox(
@@ -279,22 +302,45 @@ class _PromoTile extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              TrText(
-                                data.title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
+                              canEdit
+                                  ? QcEditableText(
+                                      data.title,
+                                      entityType: data.entityType!,
+                                      entityId: data.entityId!,
+                                      fieldKey: 'title',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    )
+                                  : TrText(
+                                      data.title,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                               const SizedBox(height: 6),
-                              TrText(
-                                data.subtitle,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
+                              canEdit
+                                  ? QcEditableText(
+                                      data.subtitle,
+                                      entityType: data.entityType!,
+                                      entityId: data.entityId!,
+                                      fieldKey: 'subtitle',
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    )
+                                  : TrText(
+                                      data.subtitle,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
                               if (data.ctaLabel != null &&
                                   data.ctaLabel!.isNotEmpty)
                                 Padding(
@@ -308,13 +354,24 @@ class _PromoTile extends StatelessWidget {
                                       color: Colors.white.withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
-                                    child: TrText(
-                                      data.ctaLabel!,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                      ),
-                                    ),
+                                    child: canEdit
+                                        ? QcEditableText(
+                                            data.ctaLabel!,
+                                            entityType: data.entityType!,
+                                            entityId: data.entityId!,
+                                            fieldKey: 'cta_label',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                            ),
+                                          )
+                                        : TrText(
+                                            data.ctaLabel!,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                            ),
+                                          ),
                                   ),
                                 ),
                             ],

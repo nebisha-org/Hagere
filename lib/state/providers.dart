@@ -9,11 +9,13 @@ import 'package:uuid/uuid.dart';
 
 import '../api/entities_api.dart';
 import '../api/carousel_api.dart';
+import '../api/overrides_api.dart';
 import 'category_providers.dart';
 import '../utils/category_filter.dart';
 import '../models/category.dart';
 import '../models/carousel_item.dart';
 import 'location_name_provider.dart';
+import 'translation_provider.dart';
 
 const String _debugFallbackLatStr =
     String.fromEnvironment('DEBUG_FALLBACK_LAT', defaultValue: '25.2048');
@@ -35,6 +37,10 @@ final carouselApiProvider = Provider<CarouselApi>((ref) {
   return CarouselApi();
 });
 
+final overridesApiProvider = Provider<OverridesApi>((ref) {
+  return OverridesApi();
+});
+
 final userLocationProvider = StateProvider<LocationData?>((ref) => null);
 
 final entitiesRefreshProvider = StateProvider<int>((ref) => 0);
@@ -43,6 +49,7 @@ final carouselItemsProvider =
     FutureProvider.autoDispose<List<CarouselItem>>((ref) async {
   ref.watch(entitiesRefreshProvider);
   final api = ref.watch(carouselApiProvider);
+  final lang = ref.watch(translationControllerProvider).language.code;
   String? city;
   String? state;
 
@@ -61,7 +68,7 @@ final carouselItemsProvider =
     // ignore location name errors and fetch global carousel items
   }
 
-  return api.fetchCarousel(city: city, state: state);
+  return api.fetchCarousel(city: city, state: state, locale: lang);
 });
 
 String? _normalizeCity(String raw) {
@@ -315,6 +322,7 @@ final entitiesRawProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final loc = ref.watch(userLocationProvider);
   final refresh = ref.watch(entitiesRefreshProvider);
+  final lang = ref.watch(translationControllerProvider).language.code;
 
   if (loc == null || loc.latitude == null || loc.longitude == null) {
     return <Map<String, dynamic>>[];
@@ -329,6 +337,7 @@ final entitiesRawProvider =
     limit: null,
     ttl: const Duration(days: 3),
     forceRefresh: refresh > 0,
+    locale: lang,
   );
 
   if (refresh > 0) {
