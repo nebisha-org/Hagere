@@ -9,7 +9,6 @@ import '../state/stripe_mode_provider.dart';
 import '../state/translation_provider.dart';
 import '../state/translation_strings.dart';
 import '../state/qc_mode.dart';
-import '../state/override_providers.dart';
 import '../models/carousel_item.dart';
 
 import 'entities_screen.dart';
@@ -80,7 +79,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     ref.invalidate(homeSponsoredProvider);
     final loc = ref.watch(userLocationProvider);
     final catsAsync = ref.watch(availableCategoriesProvider);
-    final catOverridesAsync = ref.watch(categoryOverridesProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
     final carouselAsync = ref.watch(carouselItemsProvider);
@@ -207,19 +205,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           ),
         ),
         data: (cats) {
-          final overrides =
-              catOverridesAsync.maybeWhen(data: (v) => v, orElse: () => {});
-          final displayCats = cats
-              .map((c) {
-                final o = overrides[c.id] ?? const <String, String>{};
-                final title = o['title']?.toString().trim();
-                final emoji = o['emoji']?.toString().trim();
-                return c.copyWith(
-                  title: (title == null || title.isEmpty) ? c.title : title,
-                  emoji: (emoji == null || emoji.isEmpty) ? c.emoji : emoji,
-                );
-              })
-              .toList();
+          final displayCats = cats;
           // rows:
           // 0                => Language toggle
           // 0..cats.length-1 => categories

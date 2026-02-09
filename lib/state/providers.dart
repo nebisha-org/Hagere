@@ -9,13 +9,13 @@ import 'package:uuid/uuid.dart';
 
 import '../api/entities_api.dart';
 import '../api/carousel_api.dart';
-import '../api/overrides_api.dart';
 import 'category_providers.dart';
 import '../utils/category_filter.dart';
 import '../models/category.dart';
 import '../models/carousel_item.dart';
 import 'location_name_provider.dart';
 import 'translation_provider.dart';
+import 'override_providers.dart';
 
 const String _debugFallbackLatStr =
     String.fromEnvironment('DEBUG_FALLBACK_LAT', defaultValue: '25.2048');
@@ -35,10 +35,6 @@ final entitiesApiProvider = Provider<EntitiesApi>((ref) {
 
 final carouselApiProvider = Provider<CarouselApi>((ref) {
   return CarouselApi();
-});
-
-final overridesApiProvider = Provider<OverridesApi>((ref) {
-  return OverridesApi();
 });
 
 final userLocationProvider = StateProvider<LocationData?>((ref) => null);
@@ -298,7 +294,7 @@ final currentEntityIdProvider = FutureProvider<String>((ref) async {
 
 final availableCategoriesProvider =
     Provider<AsyncValue<List<AppCategory>>>((ref) {
-  final cats = ref.watch(categoriesProvider);
+  final cats = ref.watch(resolvedCategoriesProvider);
   final rawAsync = ref.watch(entitiesRawProvider);
 
   return rawAsync.whenData((items) {

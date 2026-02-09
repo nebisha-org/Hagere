@@ -7,6 +7,7 @@ import '../state/category_providers.dart';
 import '../state/location_name_provider.dart';
 import '../state/translation_provider.dart';
 import '../state/qc_mode.dart';
+import '../state/override_providers.dart';
 import 'package:location/location.dart';
 import 'add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
@@ -25,16 +26,23 @@ class EntitiesScreen extends ConsumerWidget {
     final locNameAsync = ref.watch(locationNameProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
+    final resolvedCats = ref.watch(resolvedCategoriesProvider);
+    final selectedResolved = selectedCategory == null
+        ? null
+        : (resolvedCats.firstWhere(
+            (c) => c.id == selectedCategory.id,
+            orElse: () => selectedCategory,
+          ));
     final qcState = ref.watch(qcEditStateProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: selectedCategory == null
+        title: selectedResolved == null
             ? const TrText('Nearby')
             : QcEditableText(
-                selectedCategory.title,
+                selectedResolved.title,
                 entityType: 'category',
-                entityId: selectedCategory.id,
+                entityId: selectedResolved.id,
                 fieldKey: 'title',
               ),
         actions: [
@@ -117,7 +125,7 @@ class EntitiesScreen extends ConsumerWidget {
                                 // ⭐ PROMOTE CATEGORY TILE
                                 // -----------------------------
                                 if (i == items.length + 1) {
-                                  final categoryId = selectedCategory?.id ?? '';
+                                  final categoryId = selectedResolved?.id ?? '';
                                   if (categoryId.isEmpty) {
                                     return const SizedBox.shrink();
                                   }

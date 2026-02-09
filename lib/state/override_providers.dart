@@ -1,8 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'providers.dart';
-import 'translation_provider.dart';
+import '../api/overrides_api.dart';
 import 'category_providers.dart';
+import 'translation_provider.dart';
+
+final overridesApiProvider = Provider<OverridesApi>((ref) {
+  return OverridesApi();
+});
 
 final categoryOverridesProvider =
     FutureProvider<Map<String, Map<String, String>>>((ref) async {
@@ -26,4 +30,21 @@ final categoryOverridesProvider =
     }
   }
   return out;
+});
+
+final resolvedCategoriesProvider = Provider<List<AppCategory>>((ref) {
+  final cats = ref.watch(categoriesProvider);
+  final overridesAsync = ref.watch(categoryOverridesProvider);
+  final overrides =
+      overridesAsync.maybeWhen(data: (v) => v, orElse: () => {});
+
+  return cats.map((c) {
+    final o = overrides[c.id] ?? const <String, String>{};
+    final title = o['title']?.toString().trim();
+    final emoji = o['emoji']?.toString().trim();
+    return c.copyWith(
+      title: (title == null || title.isEmpty) ? c.title : title,
+      emoji: (emoji == null || emoji.isEmpty) ? c.emoji : emoji,
+    );
+  }).toList();
 });

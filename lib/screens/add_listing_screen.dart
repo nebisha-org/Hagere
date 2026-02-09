@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../data/habesha_cities.dart';
 import '../models/category.dart';
 import '../state/category_providers.dart';
+import '../state/override_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
@@ -573,8 +574,14 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   Widget build(BuildContext context) {
     _log('BUILD: saving=$_saving promoting=$_promoting');
 
-    final categories = ref.watch(categoriesProvider); // <-- List<AppCategory>
+    final categories = ref.watch(resolvedCategoriesProvider);
     final selected = ref.watch(selectedCategoryProvider);
+    final selectedResolved = selected == null
+        ? null
+        : categories.firstWhere(
+            (c) => c.id == selected.id,
+            orElse: () => selected,
+          );
     final translator = ref.watch(translationControllerProvider);
 
     Widget buttonSpinner() => const SizedBox(
@@ -606,7 +613,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             children: [
               DropdownButtonFormField<AppCategory>(
                 key: const Key('add_listing_category'),
-                value: hasCategories ? selected : null,
+                value: hasCategories ? selectedResolved : null,
                 decoration: const InputDecoration(
                   label: TrText('Category *'),
                   border: OutlineInputBorder(),
