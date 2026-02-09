@@ -168,10 +168,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       ref.watch(translationControllerProvider);
                   return Row(
                     children: [
-                      const TrText(
-                        'Language',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
                       const Spacer(),
                       SegmentedButton<AppLanguage>(
                         segments: const [
@@ -181,7 +177,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           ),
                           ButtonSegment(
                             value: AppLanguage.amharic,
-                            label: TrText('Amharic', translate: false),
+                            label: TrText('አማርኛ', translate: false),
                           ),
                         ],
                         selected: {controller.language},

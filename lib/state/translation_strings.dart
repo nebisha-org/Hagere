@@ -3,7 +3,6 @@ const List<String> kTranslationSeed = [
   'Getting your location...',
   'Loading categories...',
   'Retry',
-  'Language',
   'English',
   'Amharic',
   'Sponsored on Home',
