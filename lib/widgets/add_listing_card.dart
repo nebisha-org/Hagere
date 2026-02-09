@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'tr_text.dart';
+
 class AddListingCard extends StatelessWidget {
   const AddListingCard({
     super.key,
@@ -29,10 +31,15 @@ class AddListingCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    TrText(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 4),
-                    Text(subtitle,
-                        style: Theme.of(context).textTheme.bodySmall),
+                    TrText(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),

@@ -1,21 +1,24 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../api/api_client.dart';
 import '../models/user.dart';
+import '../state/translation_provider.dart';
+import '../widgets/tr_text.dart';
 
-class UserListScreen extends HookWidget {
+class UserListScreen extends HookConsumerWidget {
   const UserListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final api = useMemoized(() => ApiClient());
     final future = useMemoized(() => api.listUsers(), [api]);
     final snapshot = useFuture(future);
+    final translator = ref.watch(translationControllerProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Users'),
+        title: const TrText('Users'),
         actions: [
           IconButton(
             onPressed: () async {
@@ -27,18 +30,29 @@ class UserListScreen extends HookWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text('Created user $id')));
+                  ).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text('${translator.tr('Created user')} $id'),
+                    ),
+                  );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text('Create failed: $e')));
+                  ).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '${translator.tr('Create failed:')} ${e.toString()}',
+                      ),
+                    ),
+                  );
                 }
               }
             },
             icon: const Icon(Icons.add),
-            tooltip: 'Create test user',
+            tooltip: translator.tr('Create test user'),
           ),
         ],
       ),
@@ -48,7 +62,16 @@ class UserListScreen extends HookWidget {
         ),
         _ =>
           snapshot.hasError
-              ? Center(child: Text('Error: ${snapshot.error}'))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const TrText('Error:'),
+                      const SizedBox(height: 4),
+                      Text(snapshot.error.toString()),
+                    ],
+                  ),
+                )
               : _UsersList(users: snapshot.data ?? const []),
       },
       floatingActionButton: FloatingActionButton.extended(
@@ -123,18 +146,27 @@ class UserListScreen extends HookWidget {
 
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Uploaded & created user: $id')),
+                SnackBar(
+                  content: Text(
+                      '${translator.tr('Uploaded & created user:')} $id'),
+                ),
               );
             }
           } catch (e) {
             if (context.mounted) {
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+              ).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '${translator.tr('Upload failed:')} ${e.toString()}',
+                  ),
+                ),
+              );
             }
           }
         },
-        label: const Text('Demo Upload'),
+        label: const TrText('Demo Upload'),
         icon: const Icon(Icons.cloud_upload),
       ),
     );
@@ -149,7 +181,7 @@ class _UsersList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (users.isEmpty) {
       return const Center(
-        child: Text('No users found. Tap + to create a test user.'),
+        child: TrText('No users found. Tap + to create a test user.'),
       );
     }
     return ListView.separated(
@@ -159,10 +191,13 @@ class _UsersList extends StatelessWidget {
         final u = users[index];
         return ListTile(
           leading: CircleAvatar(
-            child: Text(u.name.isNotEmpty ? u.name[0] : '?'),
+            child: TrText(
+              u.name.isNotEmpty ? u.name[0] : '?',
+              translate: false,
+            ),
           ),
-          title: Text(u.name.isNotEmpty ? u.name : u.userID),
-          subtitle: Text(
+          title: TrText(u.name.isNotEmpty ? u.name : u.userID),
+          subtitle: TrText(
             [u.city, u.state].where((e) => e.isNotEmpty).join(', '),
           ),
           trailing: const Icon(Icons.chevron_right),
@@ -173,11 +208,11 @@ class _UsersList extends StatelessWidget {
             showDialog(
               context: context,
               builder: (_) => AlertDialog(
-                title: Text(detail?.name ?? 'User'),
+                title: TrText(detail?.name ?? 'User'),
                 content: Text(
-                  'Gender: ${detail?.gender}\n'
-                  'Bio: ${detail?.bio}\n'
-                  'Image: ${detail?.imageUrl}',
+                  '${translator.tr('Gender:')} ${detail?.gender}\n'
+                  '${translator.tr('Bio:')} ${detail?.bio}\n'
+                  '${translator.tr('Image:')} ${detail?.imageUrl}',
                 ),
               ),
             );

@@ -2,17 +2,27 @@ import 'config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:agerelige_flutter_client/screens/categories_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
 import 'package:agerelige_flutter_client/cache/entities_cache.dart';
+import 'package:agerelige_flutter_client/state/translation_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   print('API_BASE_URL=$apiBaseUrl');
   await Hive.initFlutter();
   await EntitiesCache.open();
-  runApp(const ProviderScope(child: AgereLigeApp()));
+  final prefs = await SharedPreferences.getInstance();
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const AgereLigeApp(),
+    ),
+  );
 }
 
 class AgereLigeApp extends StatelessWidget {

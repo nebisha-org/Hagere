@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/carousel_item.dart';
+import 'tr_text.dart';
 
 class PromoTileData {
   PromoTileData({
@@ -278,7 +279,7 @@ class _PromoTile extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
+                              TrText(
                                 data.title,
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -287,7 +288,7 @@ class _PromoTile extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              Text(
+                              TrText(
                                 data.subtitle,
                                 style: const TextStyle(
                                   color: Colors.white70,
@@ -307,7 +308,7 @@ class _PromoTile extends StatelessWidget {
                                       color: Colors.white.withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
-                                    child: Text(
+                                    child: TrText(
                                       data.ctaLabel!,
                                       style: const TextStyle(
                                         color: Colors.white,

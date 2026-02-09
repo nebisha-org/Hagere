@@ -9,6 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/payments_api.dart';
 import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
+import '../widgets/tr_text.dart';
+import '../state/translation_provider.dart';
 
 class PromoteHomeTile extends ConsumerStatefulWidget {
   const PromoteHomeTile({
@@ -85,15 +87,25 @@ class _PromoteHomeTileState extends ConsumerState<PromoteHomeTile>
 
       if (!ok) {
         if (mounted) {
+          final translator = ref.read(translationControllerProvider);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open checkout')),
+            SnackBar(
+              content: Text(
+                translator.tr('Could not open checkout'),
+              ),
+            ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
+        final translator = ref.read(translationControllerProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Checkout failed: $e')),
+          SnackBar(
+            content: Text(
+              '${translator.tr('Checkout failed:')} ${e.toString()}',
+            ),
+          ),
         );
       }
     } finally {
@@ -105,8 +117,8 @@ class _PromoteHomeTileState extends ConsumerState<PromoteHomeTile>
   Widget build(BuildContext context) {
     return ListTile(
       leading: const Icon(Icons.star),
-      title: const Text('Promote on Home'),
-      subtitle: const Text('Paid placement on the home screen.'),
+      title: const TrText('Promote on Home'),
+      subtitle: const TrText('Paid placement on the home screen.'),
       trailing: _busy
           ? const SizedBox(
               height: 18,

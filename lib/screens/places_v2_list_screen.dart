@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state/providers.dart';
 import 'place_detail_screen.dart';
+import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 
 class Entity {
   final String name;
@@ -71,7 +72,7 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
     final entitiesAsync = ref.watch(entitiesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Nearby Businesses')),
+      appBar: AppBar(title: const TrText('Nearby Businesses')),
       body: (loc?.latitude == null || loc?.longitude == null)
           ? const Center(
               child: Column(
@@ -79,7 +80,7 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 12),
-                  Text('Getting your location...'),
+                  TrText('Getting your location...'),
                 ],
               ),
             )
@@ -90,21 +91,23 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Error: $err'),
+                    const TrText('Error:'),
+                    const SizedBox(height: 4),
+                    Text(err.toString()),
                     const SizedBox(height: 12),
                     OutlinedButton(
                       onPressed: () {
                         ref.read(entitiesRefreshProvider.notifier).state++;
                         ref.invalidate(entitiesRawProvider);
                       },
-                      child: const Text('Retry'),
+                      child: const TrText('Retry'),
                     ),
                   ],
                 ),
               ),
               data: (items) {
                 if (items.isEmpty) {
-                  return const Center(child: Text('No places found'));
+                  return const Center(child: TrText('No places found'));
                 }
 
                 return ListView.separated(
@@ -115,12 +118,12 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                     final e = Entity.fromJson(raw);
 
                     return ListTile(
-                      title: Text(e.name),
+                      title: TrText(e.name),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (e.address.isNotEmpty) Text(e.address),
-                          if (e.phone.isNotEmpty) Text(e.phone),
+                          if (e.address.isNotEmpty) TrText(e.address),
+                          if (e.phone.isNotEmpty) TrText(e.phone),
                         ],
                       ),
                       trailing: e.phone.isEmpty

@@ -5,10 +5,12 @@ import '../state/providers.dart';
 import '../utils/geo.dart';
 import '../state/category_providers.dart';
 import '../state/location_name_provider.dart';
+import '../state/translation_provider.dart';
 import 'package:location/location.dart';
 import 'add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
 import 'package:agerelige_flutter_client/widgets/promote_category_tile.dart';
+import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 
 class EntitiesScreen extends ConsumerWidget {
   const EntitiesScreen({super.key});
@@ -24,7 +26,7 @@ class EntitiesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(selectedCategory?.title ?? 'Nearby'),
+        title: TrText(selectedCategory?.title ?? 'Nearby'),
         actions: [
           IconButton(
             onPressed: () {
@@ -43,9 +45,9 @@ class EntitiesScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   locNameAsync.when(
-                    loading: () => const Text('Finding your area...'),
-                    error: (e, _) => const Text('Near you'),
-                    data: (name) => Text(
+                    loading: () => const TrText('Finding your area...'),
+                    error: (e, _) => const TrText('Near you'),
+                    data: (name) => TrText(
                       name,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
@@ -60,9 +62,13 @@ class EntitiesScreen extends ConsumerWidget {
                           loading: () =>
                               const Center(child: CircularProgressIndicator()),
                           error: (err, _) => Center(
-                            child: Text(
-                              'Error:\n$err',
-                              textAlign: TextAlign.center,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const TrText('Error:'),
+                                const SizedBox(height: 4),
+                                Text(err.toString()),
+                              ],
                             ),
                           ),
                           data: (items) {
@@ -107,8 +113,8 @@ class EntitiesScreen extends ConsumerWidget {
                                     ),
                                     error: (e, _) => Padding(
                                       padding: const EdgeInsets.all(16),
-                                      child:
-                                          Text('Could not load device id: $e'),
+                                      child: TrText(
+                                          'Could not load device id: $e'),
                                     ),
                                     data: (entityId) => PromoteCategoryTile(
                                       paymentsBaseUrl: paymentsBaseUrl,
@@ -152,7 +158,8 @@ class EntitiesScreen extends ConsumerWidget {
 
                                 return ListTile(
                                   title:
-                                      Text(e['name']?.toString() ?? 'Unknown'),
+                                      TrText(
+                                          e['name']?.toString() ?? 'Unknown'),
                                   subtitle: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -160,10 +167,10 @@ class EntitiesScreen extends ConsumerWidget {
                                       if ((e['address']?.toString() ?? '')
                                           .trim()
                                           .isNotEmpty)
-                                        Text(e['address'].toString()),
-                                      if (phone.isNotEmpty) Text(phone),
+                                        TrText(e['address'].toString()),
+                                      if (phone.isNotEmpty) TrText(phone),
                                       const SizedBox(height: 2),
-                                      Text(
+                                      TrText(
                                         distanceText,
                                         style: Theme.of(context)
                                             .textTheme
@@ -172,7 +179,7 @@ class EntitiesScreen extends ConsumerWidget {
                                     ],
                                   ),
                                   trailing:
-                                      Text(e['subtype']?.toString() ?? ''),
+                                      TrText(e['subtype']?.toString() ?? ''),
                                   isThreeLine: true,
                                 );
                               },
@@ -199,13 +206,19 @@ class _LocationGate extends ConsumerWidget {
             await ref.read(locationControllerProvider).ensureLocationReady();
           } catch (e) {
             if (context.mounted) {
+              final translator =
+                  ref.read(translationControllerProvider);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(e.toString())),
+                SnackBar(
+                  content: Text(
+                    '${translator.tr('Error:')} ${e.toString()}',
+                  ),
+                ),
               );
             }
           }
         },
-        child: const Text('Enable Location'),
+        child: const TrText('Enable Location'),
       ),
     );
   }

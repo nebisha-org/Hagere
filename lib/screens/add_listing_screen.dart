@@ -13,6 +13,8 @@ import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
+import '../state/translation_provider.dart';
+import '../widgets/tr_text.dart';
 
 class AddListingScreen extends ConsumerStatefulWidget {
   const AddListingScreen({super.key});
@@ -84,7 +86,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
   void _snack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: TrText(msg)));
   }
 
   void _showError(Object e, StackTrace st) {
@@ -447,6 +449,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   Future<void> _chooseCities() async {
     String query = '';
     final selectedIds = _selectedCities.map((c) => c.id).toSet();
+    final translator = ref.read(translationControllerProvider);
 
     final result = await showModalBottomSheet<List<HabeshaCity>>(
       context: context,
@@ -477,13 +480,13 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                       child: Row(
                         children: [
                           const Expanded(
-                            child: Text(
+                            child: TrText(
                               'Pick cities',
                               style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
                           Text(
-                            '${selectedIds.length} selected',
+                            '${selectedIds.length} ${translator.tr('selected')}',
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 12,
@@ -493,7 +496,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                           TextButton(
                             onPressed: () =>
                                 setSheetState(() => selectedIds.clear()),
-                            child: const Text('Clear'),
+                            child: const TrText('Clear'),
                           ),
                           const SizedBox(width: 4),
                           ElevatedButton(
@@ -503,7 +506,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                                   .toList();
                               Navigator.of(ctx).pop(chosen);
                             },
-                            child: const Text('Done'),
+                            child: const TrText('Done'),
                           ),
                         ],
                       ),
@@ -512,7 +515,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                       padding: const EdgeInsets.all(12),
                       child: TextField(
                         decoration: const InputDecoration(
-                          labelText: 'Search',
+                          label: TrText('Search'),
                           border: OutlineInputBorder(),
                         ),
                         onChanged: (v) => setSheetState(() => query = v),
@@ -527,8 +530,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                           final c = filtered[i];
                           final checked = selectedIds.contains(c.id);
                           return ListTile(
-                            title: Text(c.city),
-                            subtitle: Text(
+                            title: TrText(c.city),
+                            subtitle: TrText(
                               c.region.trim().isEmpty
                                   ? c.country
                                   : '${c.region}, ${c.country}',
@@ -572,6 +575,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     final categories = ref.watch(categoriesProvider); // <-- List<AppCategory>
     final selected = ref.watch(selectedCategoryProvider);
+    final translator = ref.watch(translationControllerProvider);
 
     Widget buttonSpinner() => const SizedBox(
           height: 18,
@@ -584,7 +588,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     Widget sectionTitle(String text) => Padding(
           padding: const EdgeInsets.only(top: 8, bottom: 6),
-          child: Text(
+          child: TrText(
             text,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
@@ -593,7 +597,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add your listing')),
+      appBar: AppBar(title: const TrText('Add your listing')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -604,14 +608,14 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 key: const Key('add_listing_category'),
                 value: hasCategories ? selected : null,
                 decoration: const InputDecoration(
-                  labelText: 'Category *',
+                  label: TrText('Category *'),
                   border: OutlineInputBorder(),
                 ),
                 items: categories
                     .map(
                       (c) => DropdownMenuItem(
                         value: c,
-                        child: Text('${c.emoji} ${c.title}'),
+                        child: TrText('${c.emoji} ${c.title}'),
                       ),
                     )
                     .toList(),
@@ -621,12 +625,13 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                         ref.read(selectedCategoryProvider.notifier).state = v;
                       }
                     : null,
-                validator: (v) => v == null ? 'Required' : null,
+                validator: (v) =>
+                    v == null ? translator.tr('Required') : null,
               ),
               if (!hasCategories)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: Text(
+                  child: TrText(
                     'No categories available. Check categoriesProvider.',
                     style: TextStyle(color: Colors.red),
                   ),
@@ -637,17 +642,18 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 key: const Key('add_listing_name'),
                 controller: _nameCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Business name *',
+                  label: TrText('Business name *'),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Required' : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? translator.tr('Required')
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Description',
+                  label: TrText('Description'),
                   border: OutlineInputBorder(),
                 ),
                 minLines: 3,
@@ -657,8 +663,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _tagsCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Tags / keywords',
-                  helperText: 'Comma-separated (e.g., injera, coffee, catering)',
+                  label: TrText('Tags / keywords'),
+                  helper: TrText(
+                      'Comma-separated (e.g., injera, coffee, catering)'),
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 2,
@@ -672,18 +679,18 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                   OutlinedButton.icon(
                     onPressed: _addFromCamera,
                     icon: const Icon(Icons.photo_camera),
-                    label: const Text('Take photo'),
+                    label: const TrText('Take photo'),
                   ),
                   OutlinedButton.icon(
                     onPressed: _addFromGallery,
                     icon: const Icon(Icons.photo_library),
-                    label: const Text('Pick from gallery'),
+                    label: const TrText('Pick from gallery'),
                   ),
                   if (_pickedImages.isNotEmpty)
                     OutlinedButton.icon(
                       onPressed: () => setState(() => _pickedImages.clear()),
                       icon: const Icon(Icons.delete_outline),
-                      label: const Text('Clear photos'),
+                      label: const TrText('Clear photos'),
                     ),
                 ],
               ),
@@ -693,8 +700,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _photoUrlsCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Photo URLs',
-                  helperText: 'Paste one or more image links, separated by commas',
+                  label: TrText('Photo URLs'),
+                  helper: TrText(
+                      'Paste one or more image links, separated by commas'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
@@ -705,7 +713,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _phoneCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Phone (optional)',
+                  label: TrText('Phone (optional)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.phone,
@@ -714,7 +722,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _emailCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Email (optional)',
+                  label: TrText('Email (optional)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
@@ -723,8 +731,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _whatsappCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'WhatsApp (optional)',
-                  helperText: 'Include country code (e.g., +1 202 555 0123)',
+                  label: TrText('WhatsApp (optional)'),
+                  helper:
+                      TrText('Include country code (e.g., +1 202 555 0123)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.phone,
@@ -734,7 +743,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _addressCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Address (optional)',
+                  label: TrText('Address (optional)'),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -742,7 +751,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _neighborhoodCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Neighborhood / Area',
+                  label: TrText('Neighborhood / Area'),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -750,7 +759,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               OutlinedButton.icon(
                 onPressed: _chooseCities,
                 icon: const Icon(Icons.location_city),
-                label: const Text('Pick from 50 cities'),
+                label: const TrText('Pick from 50 cities'),
               ),
               if (_selectedCities.isNotEmpty)
                 Padding(
@@ -761,7 +770,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                     children: _selectedCities
                         .map(
                           (c) => Chip(
-                            label: Text(c.label),
+                            label: TrText(c.label),
                             onDeleted: () {
                               setState(() {
                                 _selectedCities =
@@ -777,7 +786,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               if (_selectedCities.length > 1)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(
+                  child: TrText(
                     'Multiple cities selected. City/State/Country fields are optional.',
                     style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
                   ),
@@ -786,7 +795,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _cityCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'City (where it should appear)',
+                  label: TrText('City (where it should appear)'),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -794,7 +803,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _stateCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'State / Region',
+                  label: TrText('State / Region'),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -802,7 +811,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _countryCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Country',
+                  label: TrText('Country'),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -810,7 +819,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _mapLinkCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Google Maps link (optional)',
+                  label: TrText('Google Maps link (optional)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
@@ -820,7 +829,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _websiteCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Website (optional)',
+                  label: TrText('Website (optional)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
@@ -829,7 +838,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _instagramCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Instagram (optional)',
+                  label: TrText('Instagram (optional)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
@@ -838,7 +847,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _facebookCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Facebook (optional)',
+                  label: TrText('Facebook (optional)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
@@ -847,7 +856,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _youtubeCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'YouTube link (optional)',
+                  label: TrText('YouTube link (optional)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
@@ -856,7 +865,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _tiktokCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'TikTok link (optional)',
+                  label: TrText('TikTok link (optional)'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.url,
@@ -866,8 +875,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _hoursCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Hours (optional)',
-                  helperText: 'e.g., Mon–Sat 9am–8pm',
+                  label: TrText('Hours (optional)'),
+                  helper: TrText('e.g., Mon–Sat 9am–8pm'),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -875,22 +884,23 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _priceCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Price range (optional)',
-                  helperText: r'e.g., $, $$, $$$',
+                  label: TrText('Price range (optional)'),
+                  helper: TrText(r'e.g., $, $$, $$$'),
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: (_saving || _promoting) ? null : _onSave,
-                child: _saving ? buttonSpinner() : const Text('Save'),
+                child: _saving ? buttonSpinner() : const TrText('Save'),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
                 key: const Key('add_listing_save_promote'),
                 onPressed: (_saving || _promoting) ? null : _onSaveAndPromote,
-                child:
-                    _promoting ? buttonSpinner() : const Text('Save & Promote'),
+                child: _promoting
+                    ? buttonSpinner()
+                    : const TrText('Save & Promote'),
               ),
             ],
           ),

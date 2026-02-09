@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../utils/geo.dart';
+import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 
 class PlaceDetailScreen extends ConsumerStatefulWidget {
   const PlaceDetailScreen({super.key, required this.entity});
@@ -267,7 +268,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(
+              title: TrText(
                 name.isEmpty ? 'Details' : name,
                 style: const TextStyle(
                   color: Colors.white,
@@ -359,7 +360,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                             children: categories
                                 .map(
                                   (c) => Chip(
-                                    label: Text(c),
+                                    label: TrText(c),
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 6,
                                     ),
@@ -387,7 +388,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                               child: ElevatedButton.icon(
                                 onPressed: () => _openMaps(lat, lon, name: name),
                                 icon: const Icon(Icons.directions),
-                                label: const Text('Directions'),
+                                label: const TrText('Directions'),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -397,13 +398,13 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                                   final coord = '$lat,$lon';
                                   Clipboard.setData(ClipboardData(text: coord));
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Coordinates copied'),
+                                    SnackBar(
+                                      content: TrText('Coordinates copied'),
                                     ),
                                   );
                                 },
                                 icon: const Icon(Icons.copy),
-                                label: const Text('Copy'),
+                                label: const TrText('Copy'),
                               ),
                             ),
                           ],
@@ -452,7 +453,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                                     mode: LaunchMode.externalApplication,
                                   ),
                           icon: const Icon(Icons.call),
-                          label: const Text('Call'),
+                          label: const TrText('Call'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -465,7 +466,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                                     mode: LaunchMode.externalApplication,
                                   ),
                           icon: const Icon(Icons.public),
-                          label: const Text('Website'),
+                          label: const TrText('Website'),
                         ),
                       ),
                     ],
@@ -474,7 +475,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                   OutlinedButton.icon(
                     onPressed: () => _share(e),
                     icon: const Icon(Icons.share),
-                    label: const Text('Share'),
+                    label: const TrText('Share'),
                   ),
                 ],
               ),
@@ -516,7 +517,7 @@ class _InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            TrText(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             ...children,
           ],
@@ -540,7 +541,7 @@ class _InfoRow extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: Colors.grey.shade700),
         const SizedBox(width: 10),
-        Expanded(child: Text(text)),
+        Expanded(child: TrText(text)),
       ],
     );
 

@@ -6,11 +6,14 @@ import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
+import '../state/translation_provider.dart';
+import '../state/translation_strings.dart';
 import '../models/carousel_item.dart';
 
 import 'entities_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_carousel.dart';
+import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 // keep import even if hidden, no harm
 import 'package:agerelige_flutter_client/widgets/promote_home_tile.dart';
 import 'package:agerelige_flutter_client/screens/places_v2_list_screen.dart';
@@ -39,8 +42,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final translator = ref.read(translationControllerProvider);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open listing: $e')),
+        SnackBar(
+          content: Text(
+            '${translator.tr('Could not open listing:')} ${e.toString()}',
+          ),
+        ),
       );
     }
   }
@@ -53,6 +61,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         await ref.read(locationControllerProvider).ensureLocationReady();
       } catch (_) {
         // ignore on home; detail screens will surface if needed
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = ref.read(translationControllerProvider);
+      if (controller.language == AppLanguage.amharic) {
+        controller.prefetch(kTranslationSeed);
       }
     });
   }
@@ -69,7 +83,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     if (loc == null || loc.latitude == null || loc.longitude == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('All Habesha'),
+          title: const TrText('All Habesha'),
         ),
         body: const Center(
           child: Column(
@@ -77,7 +91,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 12),
-              Text('Getting your location...'),
+              TrText('Getting your location...'),
             ],
           ),
         ),
@@ -86,7 +100,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('All Habesha'),
+        title: const TrText('All Habesha'),
       ),
       body: catsAsync.when(
         loading: () => const Center(
@@ -95,7 +109,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 12),
-              Text('Loading categories...'),
+              TrText('Loading categories...'),
             ],
           ),
         ),
@@ -103,28 +117,34 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Error: $e'),
+              const TrText('Error:'),
+              const SizedBox(height: 4),
+              Text(e.toString()),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: () => ref.invalidate(entitiesRawProvider),
-                child: const Text('Retry'),
+                child: const TrText('Retry'),
               ),
             ],
           ),
         ),
         data: (cats) {
           // rows:
+          // 0                => Language toggle
           // 0..cats.length-1 => categories
           // cats.length      => AddListingCard
           // cats.length+1    => Sponsored section
           // cats.length+2    => Stripe mode toggle (debug only)
+          final showLanguageToggle = true;
+          final languageToggleIndex = 0;
+          final categoriesStart = showLanguageToggle ? 1 : 0;
           final categoriesCount = cats.length;
-          final addListingIndex = categoriesCount;
-          final sponsoredIndex = categoriesCount + 1;
+          final addListingIndex = categoriesStart + categoriesCount;
+          final sponsoredIndex = categoriesStart + categoriesCount + 1;
           final showStripeToggle = !kReleaseMode;
-          final stripeToggleIndex = categoriesCount + 2;
+          final stripeToggleIndex = categoriesStart + categoriesCount + 2;
           final totalRows =
-              categoriesCount + 2 + (showStripeToggle ? 1 : 0);
+              categoriesStart + categoriesCount + 2 + (showStripeToggle ? 1 : 0);
 
           return LayoutBuilder(
             builder: (context, constraints) {
@@ -142,12 +162,53 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   itemCount: totalRows,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, i) {
+                // 0) Language toggle
+                if (showLanguageToggle && i == languageToggleIndex) {
+                  final controller =
+                      ref.watch(translationControllerProvider);
+                  return Row(
+                    children: [
+                      const TrText(
+                        'Language',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      SegmentedButton<AppLanguage>(
+                        segments: const [
+                          ButtonSegment(
+                            value: AppLanguage.english,
+                            label: TrText('English', translate: false),
+                          ),
+                          ButtonSegment(
+                            value: AppLanguage.amharic,
+                            label: TrText('Amharic', translate: false),
+                          ),
+                        ],
+                        selected: {controller.language},
+                        onSelectionChanged: (value) {
+                          if (value.isEmpty) return;
+                          final selected = value.first;
+                          controller.setLanguage(selected);
+                          if (selected == AppLanguage.amharic) {
+                            controller.prefetch(kTranslationSeed);
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                }
+
                 // 1) Category rows
-                if (i < categoriesCount) {
-                  final c = cats[i];
+                if (i >= categoriesStart &&
+                    i < categoriesStart + categoriesCount) {
+                  final c = cats[i - categoriesStart];
                   return ListTile(
-                    leading: Text(c.emoji, style: const TextStyle(fontSize: 22)),
-                    title: Text(c.title),
+                    leading: TrText(
+                      c.emoji,
+                      translate: false,
+                      style: const TextStyle(fontSize: 22),
+                    ),
+                    title: TrText(c.title),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       ref.read(selectedCategoryProvider.notifier).state = c;
@@ -160,8 +221,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                               .ensureLocationReady();
                         } catch (e) {
                           if (context.mounted) {
+                            final translator =
+                                ref.read(translationControllerProvider);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString())),
+                              SnackBar(
+                                content: Text(
+                                  '${translator.tr('Error:')} ${e.toString()}',
+                                ),
+                              ),
                             );
                           }
                         }
@@ -220,7 +287,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         children: [
                           const Padding(
                             padding: EdgeInsets.only(top: 16, bottom: 8),
-                            child: Text(
+                            child: TrText(
                               'Sponsored on Home',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
@@ -232,9 +299,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                                 (e) => Card(
                                   child: ListTile(
                                     leading: const Icon(Icons.star),
-                                    title: Text((e['name'] ?? '').toString()),
+                                    title:
+                                        TrText((e['name'] ?? '').toString()),
                                     subtitle:
-                                        Text((e['categoryId'] ?? '').toString()),
+                                        TrText((e['categoryId'] ?? '').toString()),
                                     onTap: () {
                                       // OPTIONAL: later route to details or category
                                     },
@@ -270,8 +338,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           .read(stripeModeProvider.notifier)
                           .setMode(on ? StripeMode.test : StripeMode.live);
                     },
-                    title: const Text('Stripe mode'),
-                    subtitle: Text(isTest ? 'Test' : 'Live'),
+                    title: const TrText('Stripe mode'),
+                    subtitle: TrText(isTest ? 'Test' : 'Live'),
                     secondary: const Icon(Icons.payment),
                   );
                 }

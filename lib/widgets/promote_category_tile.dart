@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/payments_api.dart';
 import '../services/checkout_launcher.dart';
 import '../state/stripe_mode_provider.dart';
+import '../widgets/tr_text.dart';
+import '../state/translation_provider.dart';
 
 const bool kShowHomeSponsor = false;
 
@@ -47,14 +49,14 @@ class _PromoteCategoryTileState extends ConsumerState<PromoteCategoryTile> {
             children: [
               const Icon(Icons.campaign, color: Colors.orange),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Promote your business here',
+                    TrText('Promote your business here',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     SizedBox(height: 4),
-                    Text(r'$2.99 · Top of this category for 7 days',
+                    TrText(r'$2.99 · Top of this category for 7 days',
                         style: TextStyle(fontSize: 12)),
                   ],
                 ),
@@ -90,14 +92,19 @@ class _PromoteCategoryTileState extends ConsumerState<PromoteCategoryTile> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Complete payment in browser, then return.')),
+          SnackBar(
+              content: TrText('Complete payment in browser, then return.')),
         );
       }
     } catch (e) {
       if (mounted) {
+        final translator = ref.read(translationControllerProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to start promotion: $e')),
+          SnackBar(
+            content: Text(
+              '${translator.tr('Failed to start promotion:')} ${e.toString()}',
+            ),
+          ),
         );
       }
     } finally {
