@@ -57,8 +57,8 @@ class QcEditableText extends ConsumerWidget {
       return textWidget;
     }
 
-    final editMode = ref.watch(qcEditModeProvider);
-    if (!editMode) {
+    final editState = ref.watch(qcEditStateProvider);
+    if (!editState.visible || !editState.editing) {
       return textWidget;
     }
 

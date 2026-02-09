@@ -25,6 +25,7 @@ class EntitiesScreen extends ConsumerWidget {
     final locNameAsync = ref.watch(locationNameProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
+    final qcState = ref.watch(qcEditStateProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -44,14 +45,13 @@ class EntitiesScreen extends ConsumerWidget {
             },
             icon: const Icon(Icons.refresh),
           ),
-          if (kQcMode)
+          if (kQcMode && qcState.visible)
             IconButton(
               icon: Icon(
-                ref.watch(qcEditModeProvider) ? Icons.edit_off : Icons.edit,
+                qcState.editing ? Icons.edit_off : Icons.edit,
               ),
               onPressed: () {
-                final next = !ref.read(qcEditModeProvider);
-                ref.read(qcEditModeProvider.notifier).state = next;
+                ref.read(qcEditStateProvider.notifier).toggleEditing();
               },
             ),
         ],

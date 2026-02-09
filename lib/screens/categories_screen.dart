@@ -103,20 +103,78 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       );
     }
 
+    final qcState = ref.watch(qcEditStateProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: const TrText('All Habesha'),
-        actions: kQcMode
+        title: kQcMode
+            ? GestureDetector(
+                onLongPress: () {
+                  showModalBottomSheet<void>(
+                    context: context,
+                    builder: (ctx) {
+                      return SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: Icon(
+                                qcState.editing ? Icons.edit_off : Icons.edit,
+                              ),
+                              title: TrText(
+                                qcState.editing ? 'Stop edit' : 'Start edit',
+                              ),
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                ref
+                                    .read(qcEditStateProvider.notifier)
+                                    .toggleEditing();
+                              },
+                            ),
+                            ListTile(
+                              leading: Icon(
+                                qcState.visible
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              title: TrText(
+                                qcState.visible
+                                    ? 'Hide edit option'
+                                    : 'Show edit option',
+                              ),
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                final notifier =
+                                    ref.read(qcEditStateProvider.notifier);
+                                if (qcState.visible) {
+                                  notifier.hideControls();
+                                } else {
+                                  notifier.showControls();
+                                }
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.close),
+                              title: const TrText('Cancel'),
+                              onTap: () => Navigator.of(ctx).pop(),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: const TrText('All Habesha'),
+              )
+            : const TrText('All Habesha'),
+        actions: (kQcMode && qcState.visible)
             ? [
                 IconButton(
                   icon: Icon(
-                    ref.watch(qcEditModeProvider)
-                        ? Icons.edit_off
-                        : Icons.edit,
+                    qcState.editing ? Icons.edit_off : Icons.edit,
                   ),
                   onPressed: () {
-                    final next = !ref.read(qcEditModeProvider);
-                    ref.read(qcEditModeProvider.notifier).state = next;
+                    ref.read(qcEditStateProvider.notifier).toggleEditing();
                   },
                 ),
               ]

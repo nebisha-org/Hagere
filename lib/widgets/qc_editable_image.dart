@@ -33,8 +33,8 @@ class QcEditableImage extends ConsumerWidget {
     if (!kQcMode || entityId.trim().isEmpty) {
       return child;
     }
-    final editMode = ref.watch(qcEditModeProvider);
-    if (!editMode) {
+    final editState = ref.watch(qcEditStateProvider);
+    if (!editState.visible || !editState.editing) {
       return child;
     }
     return Stack(

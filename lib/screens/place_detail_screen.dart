@@ -261,6 +261,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     final lat = _lat(e);
     final lon = _lon(e);
     final images = _extractImages(e);
+    final qcState = ref.watch(qcEditStateProvider);
 
     return Scaffold(
       body: CustomScrollView(
@@ -278,16 +279,13 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                 icon: const Icon(Icons.share),
                 onPressed: () => _share(e),
               ),
-              if (kQcMode)
+              if (kQcMode && qcState.visible)
                 IconButton(
                   icon: Icon(
-                    ref.watch(qcEditModeProvider)
-                        ? Icons.edit_off
-                        : Icons.edit,
+                    qcState.editing ? Icons.edit_off : Icons.edit,
                   ),
                   onPressed: () {
-                    final next = !ref.read(qcEditModeProvider);
-                    ref.read(qcEditModeProvider.notifier).state = next;
+                    ref.read(qcEditStateProvider.notifier).toggleEditing();
                   },
                 ),
             ],

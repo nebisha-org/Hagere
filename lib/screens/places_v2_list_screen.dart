@@ -72,21 +72,19 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
   Widget build(BuildContext context) {
     final loc = ref.watch(userLocationProvider);
     final entitiesAsync = ref.watch(entitiesProvider);
+    final qcState = ref.watch(qcEditStateProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const TrText('Nearby Businesses'),
-        actions: kQcMode
+        actions: (kQcMode && qcState.visible)
             ? [
                 IconButton(
                   icon: Icon(
-                    ref.watch(qcEditModeProvider)
-                        ? Icons.edit_off
-                        : Icons.edit,
+                    qcState.editing ? Icons.edit_off : Icons.edit,
                   ),
                   onPressed: () {
-                    final next = !ref.read(qcEditModeProvider);
-                    ref.read(qcEditModeProvider.notifier).state = next;
+                    ref.read(qcEditStateProvider.notifier).toggleEditing();
                   },
                 ),
               ]
