@@ -2,6 +2,7 @@ import '../config/env.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,6 +12,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:crypto/crypto.dart';
 
 import '../data/habesha_cities.dart';
 import '../models/category.dart';
@@ -160,8 +162,22 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       case 'too-many-requests':
         return 'Too many attempts. Try again later.';
       default:
-        return e.message ?? 'Sign in failed. Please try again.';
+        return e.message ?? 'Sign in failed (${e.code}).';
     }
+  }
+
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final rand = Random.secure();
+    return List.generate(length, (_) => charset[rand.nextInt(charset.length)])
+        .join();
+  }
+
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 
   bool _validateOrExplain({required String actionLabel}) {
@@ -708,15 +724,19 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         name: 'login_start',
         parameters: {'provider': 'apple'},
       );
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        nonce: nonce,
       );
       final oauth = OAuthProvider("apple.com").credential(
         idToken: appleCredential.identityToken,
         accessToken: appleCredential.authorizationCode,
+        rawNonce: rawNonce,
       );
       await FirebaseAuth.instance.signInWithCredential(oauth);
       await _analytics.logEvent(
