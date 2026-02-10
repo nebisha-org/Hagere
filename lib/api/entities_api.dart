@@ -104,6 +104,45 @@ class EntitiesApi {
     throw Exception('Unexpected entity response: ${res.body}');
   }
 
+  Uri _entitiesUri({
+    required double lat,
+    required double lon,
+    double radiusKm = 100,
+    int? limit,
+    bool serverSideGeo = false,
+    String? locale,
+  }) {
+    final query = <String, String>{
+      'lat': lat.toString(),
+      'lon': lon.toString(),
+      'radiusKm': radiusKm.toString(),
+    };
+    if (limit != null) {
+      query['limit'] = limit.toString();
+    }
+    if (serverSideGeo) {
+      query['serverSideGeo'] = 'true';
+    }
+    if (locale != null && locale.trim().isNotEmpty) {
+      query['locale'] = locale.trim();
+    }
+    return Uri.parse('$apiBaseUrl/entities').replace(queryParameters: query);
+  }
+
+  List<Map<String, dynamic>> _decodeEntities(String body) {
+    final decoded = jsonDecode(body);
+    final List rawItems = decoded is List
+        ? decoded
+        : ((decoded is Map && decoded['items'] is List)
+            ? decoded['items'] as List
+            : const []);
+    if (rawItems.isEmpty) return <Map<String, dynamic>>[];
+    return rawItems
+        .whereType<Map>()
+        .map<Map<String, dynamic>>((e) => e.cast<String, dynamic>())
+        .toList();
+  }
+
   /// CACHE WRAPPER
   Future<List<Map<String, dynamic>>> fetchEntitiesCached({
     required String regionKey,
@@ -131,21 +170,52 @@ class EntitiesApi {
     }
 
     try {
-      final items = await fetchEntities(
+      final uri = _entitiesUri(
         lat: lat,
         lon: lon,
         radiusKm: radiusKm,
         limit: limit,
         locale: locale,
       );
+      final headers = <String, String>{'Accept': 'application/json'};
+      final etag = cached == null ? null : EntitiesCache.etag(cached);
+      if (etag != null && etag.isNotEmpty) {
+        headers['If-None-Match'] = etag;
+      }
 
+      if (kDebugMode) {
+        debugPrint('[EntitiesApi] GET $uri (cached=${cached != null})');
+      }
+      final sw = Stopwatch()..start();
+      final res = await http.get(uri, headers: headers);
+      if (kDebugMode) {
+        debugPrint(
+          '[EntitiesApi] status=${res.statusCode} ${sw.elapsedMilliseconds}ms',
+        );
+      }
+
+      if (res.statusCode == 304 && cached != null) {
+        await EntitiesCache.touch(
+          box,
+          cacheKey,
+          itemsJson: EntitiesCache.items(cached),
+          etag: EntitiesCache.etag(cached),
+        );
+        final items = EntitiesCache.items(cached);
+        return items
+            .whereType<Map>()
+            .map<Map<String, dynamic>>((e) => e.cast<String, dynamic>())
+            .toList();
+      }
+
+      if (res.statusCode != 200) throw Exception(res.body);
+      final items = _decodeEntities(res.body);
       await EntitiesCache.write(
         box,
         cacheKey,
         itemsJson: items,
-        etag: null,
+        etag: res.headers['etag'],
       );
-
       return items;
     } catch (e) {
       if (cached != null) {

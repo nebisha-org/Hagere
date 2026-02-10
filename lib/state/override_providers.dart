@@ -9,6 +9,10 @@ final overridesApiProvider = Provider<OverridesApi>((ref) {
   return OverridesApi();
 });
 
+final categoryOverridesLocalProvider =
+    StateProvider<Map<String, Map<String, Map<String, String>>>>(
+        (ref) => {});
+
 final categoryOverridesProvider =
     FutureProvider<Map<String, Map<String, String>>>((ref) async {
   final api = ref.watch(overridesApiProvider);
@@ -35,12 +39,27 @@ final categoryOverridesProvider =
 
 final resolvedCategoriesProvider = Provider<List<AppCategory>>((ref) {
   final cats = ref.watch(categoriesProvider);
+  final lang = ref.watch(translationControllerProvider).language.code;
   final overridesAsync = ref.watch(categoryOverridesProvider);
   final overrides =
       overridesAsync.maybeWhen(data: (v) => v, orElse: () => {});
+  final localAll = ref.watch(categoryOverridesLocalProvider);
+  final local = localAll[lang] ?? const <String, Map<String, String>>{};
+  final merged = <String, Map<String, String>>{};
+
+  for (final entry in overrides.entries) {
+    merged[entry.key] = Map<String, String>.from(entry.value);
+  }
+  for (final entry in local.entries) {
+    final existing = merged[entry.key] ?? <String, String>{};
+    merged[entry.key] = {
+      ...existing,
+      ...entry.value,
+    };
+  }
 
   return cats.map((c) {
-    final o = overrides[c.id] ?? const <String, String>{};
+    final o = merged[c.id] ?? const <String, String>{};
     final title = o['title']?.toString().trim();
     final emoji = o['emoji']?.toString().trim();
     return c.copyWith(

@@ -249,8 +249,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final categoriesCount = displayCats.length;
           final addListingIndex = categoriesStart + categoriesCount;
           final sponsoredIndex = categoriesStart + categoriesCount + 1;
-          final showStripeToggle =
-              (kQcMode && qcState.visible) || !kReleaseMode;
+          final qcActive = qcState.visible || qcState.editing;
+          final showStripeToggle = (kQcMode && qcActive) || !kReleaseMode;
           final stripeToggleIndex = categoriesStart + categoriesCount + 2;
           final totalRows =
               categoriesStart + categoriesCount + 2 + (showStripeToggle ? 1 : 0);

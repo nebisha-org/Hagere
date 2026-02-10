@@ -84,11 +84,35 @@ class QcEditableText extends ConsumerWidget {
             );
             if (updated == null) return;
             onUpdated?.call(updated);
-            await EntitiesCache.clearAll();
+            final lang = ref.read(translationControllerProvider).language.code;
+            await EntitiesCache.applyOverrideToAll(
+              entityId: entityId,
+              fieldKey: fieldKey,
+              value: updated,
+              locale: lang,
+            );
+            if (entityType == 'category') {
+              ref.read(categoryOverridesLocalProvider.notifier).update((state) {
+                final next =
+                    Map<String, Map<String, Map<String, String>>>.from(state);
+                final perLang = Map<String, Map<String, String>>.from(
+                  next[lang] ?? const <String, Map<String, String>>{},
+                );
+                final perCat = Map<String, String>.from(
+                  perLang[entityId] ?? const <String, String>{},
+                );
+                perCat[fieldKey] = updated;
+                perLang[entityId] = perCat;
+                next[lang] = perLang;
+                return next;
+              });
+            }
             ref.invalidate(entitiesRawProvider);
-            ref.invalidate(categoryOverridesProvider);
-            ref.invalidate(carouselItemsProvider);
-            ref.invalidate(homeSponsoredProvider);
+            if (entityType == 'carousel') {
+              ref.invalidate(carouselItemsProvider);
+            } else if (entityType == 'entity') {
+              ref.invalidate(homeSponsoredProvider);
+            }
           },
         ),
       ],
