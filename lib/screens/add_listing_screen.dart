@@ -77,6 +77,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   void initState() {
     super.initState();
     _googleInit = GoogleSignIn.instance.initialize();
+    _guestMode = true;
+    _authUnlocked = true;
+    _authLabel = 'Guest';
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (!mounted) return;
       if (user == null) {
