@@ -38,15 +38,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   void _cycleQcState() {
     final qcState = ref.read(qcEditStateProvider);
     final notifier = ref.read(qcEditStateProvider.notifier);
-    if (!qcState.visible) {
-      notifier.startEditing();
+    if (qcState.visible || qcState.editing) {
+      notifier.hideControls();
       return;
     }
-    if (qcState.editing) {
-      notifier.stopEditing();
-      return;
-    }
-    notifier.hideControls();
+    notifier.startEditing();
   }
 
   String _normalize(String raw) {
