@@ -18,6 +18,12 @@ Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch:
 - Real iPhone (00008130-001E350014BA001C) runs and **shows seeded Addis data** when location is set near Addis.
 - API verified: `/entities` returns list with lat/lng filtering.
 
+## ✅ QC mode + release (2026-02-10)
+- QC mode enabled in release builds (no compile flag needed).
+- 6‑second long‑press on the All Habesha title cycles: hidden → editing → stop edit → hidden.
+- Stripe test/live strip only shows when QC is visible (or in non‑release).
+- TestFlight build **1.0.1 (1766611766)** uploaded and App Store review submitted.
+
 ## 🔧 Key fixes already applied
 - **Location hardcode removed** and proper permission flow restored.
 - **Category tap** no longer blocked by location permission (non-blocking).
