@@ -48,6 +48,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   bool _authUnlocked = false;
   bool _authWorking = false;
   String? _authLabel;
+  bool _guestMode = false;
   StreamSubscription<User?>? _authSub;
   Future<void>? _googleInit;
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
@@ -78,14 +79,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       if (!mounted) return;
       if (user == null) {
         setState(() {
-          _authUnlocked = false;
-          _authLabel = null;
+          _authUnlocked = _guestMode;
+          _authLabel = _guestMode ? 'Guest' : null;
         });
         _analytics.setUserId(id: null);
         return;
       }
       final label = user.displayName ?? user.email ?? 'Signed in';
       setState(() {
+        _guestMode = false;
         _authUnlocked = true;
         _authLabel = label;
       });
@@ -749,6 +751,16 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     }
   }
 
+  void _continueAsGuest() {
+    if (!mounted) return;
+    setState(() {
+      _guestMode = true;
+      _authUnlocked = true;
+      _authLabel = 'Guest';
+    });
+    _analytics.logEvent(name: 'login_guest');
+  }
+
   Widget _buildAuthGate() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,10 +796,11 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                     ],
                   ),
                 ),
-                TextButton(
-                  onPressed: _authWorking ? null : _signOut,
-                  child: const TrText('Sign out'),
-                ),
+                if (!_guestMode)
+                  TextButton(
+                    onPressed: _authWorking ? null : _signOut,
+                    child: const TrText('Sign out'),
+                  ),
               ],
             ),
           ),
@@ -811,6 +824,11 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 icon: const Icon(Icons.apple),
                 label: const TrText('Continue with Apple'),
               ),
+            OutlinedButton.icon(
+              onPressed: _authWorking ? null : _continueAsGuest,
+              icon: const Icon(Icons.person_outline),
+              label: const TrText('Continue as guest'),
+            ),
           ],
         ),
         if (!_authUnlocked)
