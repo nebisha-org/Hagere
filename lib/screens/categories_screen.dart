@@ -238,18 +238,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 child: const TrText('All Habesha'),
               )
             : const TrText('All Habesha'),
-        actions: (kQcMode && qcState.visible)
-            ? [
-                IconButton(
-                  icon: Icon(
-                    qcState.editing ? Icons.edit_off : Icons.edit,
-                  ),
-                  onPressed: () {
-                    ref.read(qcEditStateProvider.notifier).toggleEditing();
-                  },
-                ),
-              ]
-            : null,
+        actions: null,
       ),
       body: catsAsync.when(
         loading: () => const Center(
@@ -291,7 +280,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final categoriesCount = displayCats.length;
           final addListingIndex = categoriesStart + categoriesCount;
           final sponsoredIndex = categoriesStart + categoriesCount + 1;
-          final showStripeToggle = !kReleaseMode;
+          final showStripeToggle = kQcMode || !kReleaseMode;
           final stripeToggleIndex = categoriesStart + categoriesCount + 2;
           final totalRows =
               categoriesStart + categoriesCount + 2 + (showStripeToggle ? 1 : 0);
@@ -300,14 +289,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             builder: (context, constraints) {
               const double rowHeight = 64;
               const double minCarouselHeight = 140;
-              const double padding = 32; // 16 top + 16 bottom
+              final double bottomInset = MediaQuery.of(context).padding.bottom;
+              final double padding = 32 + bottomInset; // 16 top + 16 bottom + safe area
               final double available =
                   constraints.maxHeight - padding - (categoriesCount * rowHeight);
               final double carouselHeight =
                   available > minCarouselHeight ? available : minCarouselHeight;
 
               return Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
                 child: ListView.separated(
                   itemCount: totalRows,
                   separatorBuilder: (_, __) => const Divider(height: 1),

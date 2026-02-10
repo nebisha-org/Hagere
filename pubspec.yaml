@@ -1,7 +1,7 @@
 name: agerelige_flutter_client
 description: Flutter client for existing AgereLige AWS backend (migrated from iOS).
 publish_to: "none"
-version: 0.1.0+180
+version: 1.0.1+180
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

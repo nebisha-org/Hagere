@@ -23,6 +23,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Push a new beta build to TestFlight
 
+### ios enable_sign_in_with_apple
+
+```sh
+[bundle exec] fastlane ios enable_sign_in_with_apple
+```
+
+Enable Sign in with Apple capability for the app
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.

@@ -22,4 +22,13 @@ platform :ios do
     build_app(workspace: "Runner.xcworkspace", scheme: "Runner")
     upload_to_testflight
   end
+
+  desc "Enable Sign in with Apple capability for the app"
+  lane :enable_sign_in_with_apple do
+    modify_services(
+      services: {
+        sign_in_with_apple: "on"
+      }
+    )
+  end
 end

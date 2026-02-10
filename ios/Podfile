@@ -63,4 +63,23 @@ post_install do |installer|
       # config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
     end
   end
+
+  # Fix Xcode "no rule to process .xcprivacy" in geocoding_ios.
+  installer.pods_project.targets.each do |t|
+    next unless t.name == 'geocoding_ios'
+
+    privacy_refs = []
+    t.source_build_phase.files.each do |build_file|
+      ref = build_file.file_ref
+      next unless ref&.path&.end_with?('PrivacyInfo.xcprivacy')
+
+      privacy_refs << ref
+      build_file.remove_from_project
+    end
+
+    privacy_refs.each do |ref|
+      next if t.resources_build_phase.files_references.include?(ref)
+      t.resources_build_phase.add_file_reference(ref)
+    end
+  end
 end
