@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'qc_mode.dart';
 
 enum StripeMode { live, test }
 
@@ -16,7 +17,7 @@ class StripeModeController extends StateNotifier<StripeMode> {
     _load();
   }
 
-  static bool get allowTest => !kReleaseMode;
+  static bool get allowTest => kQcMode;
   bool _userSet = false;
 
   Future<void> _load() async {
