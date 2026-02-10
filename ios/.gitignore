@@ -16,6 +16,8 @@ profile
 *.mobileprovision
 *.ipa
 *.dSYM.zip
+fastlane/Preview.html
+fastlane/report.xml
 xcuserdata
 **/.generated/
 Flutter/App.framework

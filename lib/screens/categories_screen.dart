@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,6 +33,21 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   bool _comingSoonShown = false;
   String? _lastCityKey;
+  static const Duration _qcLongPressDuration = Duration(seconds: 6);
+
+  void _cycleQcState() {
+    final qcState = ref.read(qcEditStateProvider);
+    final notifier = ref.read(qcEditStateProvider.notifier);
+    if (!qcState.visible) {
+      notifier.startEditing();
+      return;
+    }
+    if (qcState.editing) {
+      notifier.stopEditing();
+      return;
+    }
+    notifier.hideControls();
+  }
 
   String _normalize(String raw) {
     return raw.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -179,61 +195,18 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: kQcMode
-            ? GestureDetector(
-                onLongPress: () {
-                  showModalBottomSheet<void>(
-                    context: context,
-                    builder: (ctx) {
-                      return SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: Icon(
-                                qcState.editing ? Icons.edit_off : Icons.edit,
-                              ),
-                              title: TrText(
-                                qcState.editing ? 'Stop edit' : 'Start edit',
-                              ),
-                              onTap: () {
-                                Navigator.of(ctx).pop();
-                                ref
-                                    .read(qcEditStateProvider.notifier)
-                                    .toggleEditing();
-                              },
-                            ),
-                            ListTile(
-                              leading: Icon(
-                                qcState.visible
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              title: TrText(
-                                qcState.visible
-                                    ? 'Hide edit option'
-                                    : 'Show edit option',
-                              ),
-                              onTap: () {
-                                Navigator.of(ctx).pop();
-                                final notifier =
-                                    ref.read(qcEditStateProvider.notifier);
-                                if (qcState.visible) {
-                                  notifier.hideControls();
-                                } else {
-                                  notifier.showControls();
-                                }
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.close),
-                              title: const TrText('Cancel'),
-                              onTap: () => Navigator.of(ctx).pop(),
-                            ),
-                          ],
-                        ),
-                      );
+            ? RawGestureDetector(
+                gestures: {
+                  LongPressGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                          LongPressGestureRecognizer>(
+                    () => LongPressGestureRecognizer(
+                      duration: _qcLongPressDuration,
+                    ),
+                    (instance) {
+                      instance.onLongPress = _cycleQcState;
                     },
-                  );
+                  ),
                 },
                 child: const TrText('All Habesha'),
               )
@@ -280,7 +253,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final categoriesCount = displayCats.length;
           final addListingIndex = categoriesStart + categoriesCount;
           final sponsoredIndex = categoriesStart + categoriesCount + 1;
-          final showStripeToggle = kQcMode || !kReleaseMode;
+          final showStripeToggle =
+              (kQcMode && qcState.visible) || !kReleaseMode;
           final stripeToggleIndex = categoriesStart + categoriesCount + 2;
           final totalRows =
               categoriesStart + categoriesCount + 2 + (showStripeToggle ? 1 : 0);

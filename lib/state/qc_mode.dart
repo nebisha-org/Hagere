@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'translation_provider.dart';
 
-const bool kQcMode = bool.fromEnvironment('QC_MODE', defaultValue: false);
+const bool kQcMode = bool.fromEnvironment('QC_MODE', defaultValue: true);
 
 @immutable
 class QcEditState {
