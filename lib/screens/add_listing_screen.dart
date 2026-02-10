@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:http/http.dart' as http;
@@ -49,6 +50,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   String? _authLabel;
   StreamSubscription<User?>? _authSub;
   Future<void>? _googleInit;
+  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   final _instagramCtrl = TextEditingController();
   final _facebookCtrl = TextEditingController();
   final _whatsappCtrl = TextEditingController();
@@ -79,6 +81,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           _authUnlocked = false;
           _authLabel = null;
         });
+        _analytics.setUserId(id: null);
         return;
       }
       final label = user.displayName ?? user.email ?? 'Signed in';
@@ -86,7 +89,13 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         _authUnlocked = true;
         _authLabel = label;
       });
+      _analytics.setUserId(id: user.uid);
+      final providerId = user.providerData.isNotEmpty
+          ? user.providerData.first.providerId
+          : 'firebase';
+      _analytics.setUserProperty(name: 'auth_provider', value: providerId);
     });
+    _analytics.logEvent(name: 'add_listing_open');
   }
 
   @override
@@ -409,6 +418,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       setLoading: (on) => setState(() => _saving = on),
       fn: () async {
         await _createEntity();
+        await _analytics.logEvent(
+          name: 'listing_save',
+          parameters: {'promote': false},
+        );
         ref.invalidate(carouselItemsProvider);
         if (!mounted) return;
         Navigator.of(context).pop(true);
@@ -429,7 +442,12 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       setLoading: (on) => setState(() => _promoting = on),
       fn: () async {
         final entityId = await _createEntity();
+        await _analytics.logEvent(
+          name: 'listing_save',
+          parameters: {'promote': true},
+        );
         ref.invalidate(carouselItemsProvider);
+        await _analytics.logEvent(name: 'promotion_checkout_start');
         await _startCheckout(entityId: entityId);
       },
     );
@@ -654,6 +672,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (!mounted) return;
     setState(() => _authWorking = true);
     try {
+      await _analytics.logEvent(
+        name: 'login_start',
+        parameters: {'provider': 'google'},
+      );
       await _googleInit;
       final googleUser = await GoogleSignIn.instance.authenticate();
       final auth = googleUser.authentication;
@@ -661,7 +683,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         idToken: auth.idToken,
       );
       await FirebaseAuth.instance.signInWithCredential(credential);
+      await _analytics.logEvent(
+        name: 'login_success',
+        parameters: {'provider': 'google'},
+      );
     } on FirebaseAuthException catch (e) {
+      await _analytics.logEvent(
+        name: 'login_failure',
+        parameters: {'provider': 'google', 'code': e.code},
+      );
       _snack(_authErrorMessage(e));
     } finally {
       if (mounted) setState(() => _authWorking = false);
@@ -672,6 +702,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (!mounted) return;
     setState(() => _authWorking = true);
     try {
+      await _analytics.logEvent(
+        name: 'login_start',
+        parameters: {'provider': 'apple'},
+      );
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
@@ -683,10 +717,22 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         accessToken: appleCredential.authorizationCode,
       );
       await FirebaseAuth.instance.signInWithCredential(oauth);
+      await _analytics.logEvent(
+        name: 'login_success',
+        parameters: {'provider': 'apple'},
+      );
     } on FirebaseAuthException catch (e) {
+      await _analytics.logEvent(
+        name: 'login_failure',
+        parameters: {'provider': 'apple', 'code': e.code},
+      );
       _snack(_authErrorMessage(e));
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) return;
+      await _analytics.logEvent(
+        name: 'login_failure',
+        parameters: {'provider': 'apple', 'code': e.code.name},
+      );
       _snack('Apple sign-in failed.');
     } finally {
       if (mounted) setState(() => _authWorking = false);

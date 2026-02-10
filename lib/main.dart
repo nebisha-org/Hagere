@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_analytics/observer.dart';
 
 import 'package:agerelige_flutter_client/screens/categories_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
@@ -42,6 +44,9 @@ class AgereLigeApp extends StatelessWidget {
       routes: {
         AddListingScreen.routeName: (_) => const AddListingScreen(),
       },
+      navigatorObservers: [
+        FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+      ],
     );
   }
 }

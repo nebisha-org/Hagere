@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/category_providers.dart';
 import '../state/providers.dart';
+import '../state/location_name_provider.dart';
 import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
 import '../state/translation_provider.dart';
@@ -29,6 +30,66 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+  bool _comingSoonShown = false;
+  String? _lastCityKey;
+
+  String _normalize(String raw) {
+    return raw.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  String? _extractCity(String label) {
+    final cleaned = label.trim();
+    if (cleaned.isEmpty || cleaned.toLowerCase() == 'near you') return null;
+    final parts = cleaned.split(',');
+    return parts.isEmpty ? null : parts.first.trim();
+  }
+
+  String? _extractState(String label) {
+    final parts = label.split(',');
+    if (parts.length < 2) return null;
+    return parts[1].trim();
+  }
+
+  bool _isAllowedCity({required String city, String? state}) {
+    final cityNorm = _normalize(city);
+    final stateNorm = _normalize(state ?? '');
+
+    if (cityNorm == 'dubai') return true;
+
+    if (cityNorm == 'alexandria') {
+      return stateNorm == 'va' || stateNorm == 'virginia';
+    }
+
+    if (cityNorm == 'silver spring') {
+      return stateNorm == 'md' || stateNorm == 'maryland';
+    }
+
+    if (cityNorm == 'dc' || cityNorm == 'washington') {
+      return true;
+    }
+
+    if (stateNorm == 'dc' || stateNorm == 'district of columbia') {
+      return true;
+    }
+
+    return false;
+  }
+
+  void _showComingSoon(String city) {
+    if (!mounted || _comingSoonShown) return;
+    _comingSoonShown = true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 5),
+        backgroundColor: Colors.green,
+        content: Text(
+          "comming soon to your city '$city'",
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openCarouselEntity(CarouselItem item) async {
     final entityId = item.entityId.trim();
     if (entityId.isEmpty) return;
@@ -71,6 +132,18 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       if (controller.language == AppLanguage.amharic) {
         controller.prefetch(kTranslationSeed);
       }
+    });
+    ref.listen<AsyncValue<String>>(locationNameProvider, (prev, next) {
+      next.whenData((label) {
+        final city = _extractCity(label);
+        if (city == null) return;
+        final state = _extractState(label);
+        final cityKey = '${_normalize(city)}|${_normalize(state ?? '')}';
+        if (_lastCityKey == cityKey) return;
+        _lastCityKey = cityKey;
+        if (_isAllowedCity(city: city, state: state)) return;
+        _showComingSoon(city);
+      });
     });
   }
 
