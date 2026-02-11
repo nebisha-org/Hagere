@@ -22,7 +22,7 @@ class EntitiesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final loc = ref.watch(userLocationProvider);
+    final loc = ref.watch(effectiveLocationProvider);
     final locNameAsync = ref.watch(locationNameProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
@@ -102,8 +102,9 @@ class EntitiesScreen extends ConsumerWidget {
                             const extra =
                                 (EntitiesScreen.showAddListing ? 1 : 0) +
                                     (EntitiesScreen.showPromote ? 1 : 0);
+                            const reloadExtra = 1;
                             return ListView.separated(
-                              itemCount: items.length + extra,
+                              itemCount: items.length + extra + reloadExtra,
                               separatorBuilder: (_, __) =>
                                   const Divider(height: 1),
                               itemBuilder: (_, i) {
@@ -147,6 +148,29 @@ class EntitiesScreen extends ConsumerWidget {
                                       paymentsBaseUrl: paymentsBaseUrl,
                                       categoryId: categoryId,
                                       entityId: entityId,
+                                    ),
+                                  );
+                                }
+
+                                if (i == items.length + extra) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    child: Center(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () {
+                                          ref
+                                              .read(entitiesLimitProvider.notifier)
+                                              .state += 1000;
+                                          ref
+                                              .read(entitiesRefreshProvider.notifier)
+                                              .state++;
+                                          ref.invalidate(entitiesRawProvider);
+                                        },
+                                        icon: const Icon(Icons.refresh),
+                                        label: const TrText('Reload'),
+                                      ),
                                     ),
                                   );
                                 }

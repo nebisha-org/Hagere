@@ -6,14 +6,13 @@ import 'qc_city_provider.dart';
 import 'qc_mode.dart';
 
 final locationNameProvider = FutureProvider<String>((ref) async {
-  final qcState = ref.watch(qcEditStateProvider);
   final qcCityKey = ref.watch(qcCityOverrideProvider);
-  if (kQcMode && (qcState.visible || qcState.editing)) {
+  if (kQcMode) {
     final option = qcCityOptionForKey(qcCityKey);
     if (option != null) return option.label;
   }
 
-  final loc = ref.watch(userLocationProvider);
+  final loc = ref.watch(effectiveLocationProvider);
   final lat = loc?.latitude;
   final lon = loc?.longitude;
 

@@ -228,7 +228,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     final user = FirebaseAuth.instance.currentUser;
 
-    final uri = Uri.parse('$apiBaseUrl/entities');
+    final uri = Uri.parse('$entitiesBaseUrl/entities');
     final body = <String, dynamic>{
       "categoryId": category.id,
       "name": _nameCtrl.text.trim(),

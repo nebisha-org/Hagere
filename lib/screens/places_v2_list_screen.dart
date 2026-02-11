@@ -70,7 +70,7 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final loc = ref.watch(userLocationProvider);
+    final loc = ref.watch(effectiveLocationProvider);
     final entitiesAsync = ref.watch(entitiesProvider);
     final qcState = ref.watch(qcEditStateProvider);
 
@@ -128,9 +128,26 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                 }
 
                 return ListView.separated(
-                  itemCount: items.length,
+                  itemCount: items.length + 1,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, i) {
+                    if (i == items.length) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              ref.read(entitiesLimitProvider.notifier).state +=
+                                  1000;
+                              ref.read(entitiesRefreshProvider.notifier).state++;
+                              ref.invalidate(entitiesRawProvider);
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const TrText('Reload'),
+                          ),
+                        ),
+                      );
+                    }
                     final raw = items[i];
                     final e = Entity.fromJson(raw);
                     final entityId = (raw['id'] ?? raw['place_id'] ?? '').toString();

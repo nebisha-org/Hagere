@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../cache/entities_cache.dart';
 
 class EntitiesApi {
-  final String baseUrl = apiBaseUrl;
+  final String baseUrl = entitiesBaseUrl;
 
   /// HOME SPONSORED
   Future<List<Map<String, dynamic>>> getHomeSponsored({String? locale}) async {
@@ -14,7 +14,7 @@ class EntitiesApi {
     if (locale != null && locale.trim().isNotEmpty) {
       query['locale'] = locale.trim();
     }
-    final uri = Uri.parse('$apiBaseUrl/entities/home-sponsored')
+    final uri = Uri.parse('$entitiesBaseUrl/entities/home-sponsored')
         .replace(queryParameters: query.isEmpty ? null : query);
     final res = await http.get(uri, headers: {'Accept': 'application/json'});
     if (res.statusCode != 200) throw Exception(res.body);
@@ -34,28 +34,18 @@ class EntitiesApi {
   Future<List<Map<String, dynamic>>> fetchEntities({
     required double lat,
     required double lon,
-    double radiusKm = 100,
     int? limit,
-    bool serverSideGeo = false,
-    String? locale,
   }) async {
     final query = <String, String>{
       'lat': lat.toString(),
       'lon': lon.toString(),
-      'radiusKm': radiusKm.toString(),
     };
     if (limit != null) {
       query['limit'] = limit.toString();
     }
-    if (serverSideGeo) {
-      query['serverSideGeo'] = 'true';
-    }
-    if (locale != null && locale.trim().isNotEmpty) {
-      query['locale'] = locale.trim();
-    }
 
     final uri =
-        Uri.parse('$apiBaseUrl/entities').replace(queryParameters: query);
+        Uri.parse('$entitiesBaseUrl/entities').replace(queryParameters: query);
 
     if (kDebugMode) {
       debugPrint('[EntitiesApi] GET $uri');
@@ -89,7 +79,7 @@ class EntitiesApi {
     String entityId, {
     String? locale,
   }) async {
-    final uri = Uri.parse('$apiBaseUrl/entities/$entityId').replace(
+    final uri = Uri.parse('$entitiesBaseUrl/entities/$entityId').replace(
       queryParameters: (locale != null && locale.trim().isNotEmpty)
           ? {'locale': locale.trim()}
           : null,
@@ -107,26 +97,16 @@ class EntitiesApi {
   Uri _entitiesUri({
     required double lat,
     required double lon,
-    double radiusKm = 100,
     int? limit,
-    bool serverSideGeo = false,
-    String? locale,
   }) {
     final query = <String, String>{
       'lat': lat.toString(),
       'lon': lon.toString(),
-      'radiusKm': radiusKm.toString(),
     };
     if (limit != null) {
       query['limit'] = limit.toString();
     }
-    if (serverSideGeo) {
-      query['serverSideGeo'] = 'true';
-    }
-    if (locale != null && locale.trim().isNotEmpty) {
-      query['locale'] = locale.trim();
-    }
-    return Uri.parse('$apiBaseUrl/entities').replace(queryParameters: query);
+    return Uri.parse('$entitiesBaseUrl/entities').replace(queryParameters: query);
   }
 
   List<Map<String, dynamic>> _decodeEntities(String body) {
@@ -148,7 +128,6 @@ class EntitiesApi {
     required String regionKey,
     required double lat,
     required double lon,
-    double radiusKm = 100,
     int? limit,
     Duration ttl = const Duration(hours: 12),
     bool forceRefresh = false,
@@ -157,8 +136,7 @@ class EntitiesApi {
     final box = Hive.box(EntitiesCache.boxName);
     final limitKey = limit?.toString() ?? 'all';
     final localeKey = (locale ?? 'en').toLowerCase();
-    final cacheKey =
-        'entities::$regionKey::r$radiusKm::l$limitKey::lang$localeKey';
+    final cacheKey = 'entities::$regionKey::l$limitKey::lang$localeKey';
 
     final cached = EntitiesCache.read(box, cacheKey);
     if (!forceRefresh && cached != null && EntitiesCache.isFresh(cached, ttl)) {
@@ -173,9 +151,7 @@ class EntitiesApi {
       final uri = _entitiesUri(
         lat: lat,
         lon: lon,
-        radiusKm: radiusKm,
         limit: limit,
-        locale: locale,
       );
       final headers = <String, String>{'Accept': 'application/json'};
       final etag = cached == null ? null : EntitiesCache.etag(cached);

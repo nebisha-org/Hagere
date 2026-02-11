@@ -171,7 +171,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     ref.invalidate(homeSponsoredProvider);
-    final loc = ref.watch(userLocationProvider);
+    final loc = ref.watch(effectiveLocationProvider);
     final catsAsync = ref.watch(availableCategoriesProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
@@ -533,8 +533,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                               ref
                                   .read(qcCityOverrideProvider.notifier)
                                   .setOverride(value);
+                              ref.read(entitiesLimitProvider.notifier).state =
+                                  1000;
                               ref.invalidate(locationNameProvider);
                               ref.invalidate(carouselItemsProvider);
+                              ref.invalidate(entitiesRawProvider);
+                              ref.invalidate(availableCategoriesProvider);
                               ref.read(entitiesRefreshProvider.notifier).state++;
                             },
                           ),

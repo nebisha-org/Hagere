@@ -10,12 +10,14 @@ import 'package:uuid/uuid.dart';
 import '../api/entities_api.dart';
 import '../api/carousel_api.dart';
 import 'category_providers.dart';
-import '../utils/category_filter.dart';
 import '../models/category.dart';
+import '../utils/category_filter.dart';
 import '../models/carousel_item.dart';
 import 'location_name_provider.dart';
 import 'translation_provider.dart';
 import 'override_providers.dart';
+import 'qc_city_provider.dart';
+import 'qc_mode.dart';
 
 const String _debugFallbackLatStr =
     String.fromEnvironment('DEBUG_FALLBACK_LAT', defaultValue: '25.2048');
@@ -39,32 +41,36 @@ final carouselApiProvider = Provider<CarouselApi>((ref) {
 
 final userLocationProvider = StateProvider<LocationData?>((ref) => null);
 
+LocationData _locationDataFromLatLon(double lat, double lon) {
+  return LocationData.fromMap({
+    'latitude': lat,
+    'longitude': lon,
+  });
+}
+
+final effectiveLocationProvider = Provider<LocationData?>((ref) {
+  final qcCityKey = ref.watch(qcCityOverrideProvider);
+  if (kQcMode) {
+    final option = qcCityOptionForKey(qcCityKey);
+    if (option != null) {
+      return _locationDataFromLatLon(option.lat, option.lon);
+    }
+  }
+  return ref.watch(userLocationProvider);
+});
+
 final entitiesRefreshProvider = StateProvider<int>((ref) => 0);
+final entitiesLimitProvider = StateProvider<int>((ref) => 1000);
 
 final carouselItemsProvider =
     FutureProvider.autoDispose<List<CarouselItem>>((ref) async {
   ref.watch(entitiesRefreshProvider);
   final api = ref.watch(carouselApiProvider);
-  final lang = ref.watch(translationControllerProvider).language.code;
-  String? city;
-  String? state;
+  final loc = ref.watch(effectiveLocationProvider);
+  final lat = loc?.latitude;
+  final lon = loc?.longitude;
 
-  try {
-    final name = await ref.watch(locationNameProvider.future);
-    if (name.isNotEmpty && name.toLowerCase() != 'near you') {
-      final parts = name.split(',');
-      if (parts.isNotEmpty) {
-        city = _normalizeCity(parts[0]);
-      }
-      if (parts.length > 1) {
-        state = _normalizeState(parts[1]);
-      }
-    }
-  } catch (_) {
-    // ignore location name errors and fetch global carousel items
-  }
-
-  return api.fetchCarousel(city: city, state: state, locale: lang);
+  return api.fetchCarousel(lat: lat, lon: lon);
 });
 
 String? _normalizeCity(String raw) {
@@ -295,19 +301,7 @@ final currentEntityIdProvider = FutureProvider<String>((ref) async {
 final availableCategoriesProvider =
     Provider<AsyncValue<List<AppCategory>>>((ref) {
   final cats = ref.watch(resolvedCategoriesProvider);
-  final rawAsync = ref.watch(entitiesRawProvider);
-
-  return rawAsync.whenData((items) {
-    if (items.isEmpty) return cats;
-
-    final filtered = <AppCategory>[];
-    for (final cat in cats) {
-      final hasAny = items.any((e) => matchesCategoryForEntity(e, cat));
-      if (hasAny) filtered.add(cat);
-    }
-    if (filtered.isEmpty) return cats;
-    return filtered;
-  });
+  return AsyncValue.data(cats);
 });
 
 String _regionKey(double lat, double lon) {
@@ -316,9 +310,10 @@ String _regionKey(double lat, double lon) {
 
 final entitiesRawProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final loc = ref.watch(userLocationProvider);
+  final loc = ref.watch(effectiveLocationProvider);
   final refresh = ref.watch(entitiesRefreshProvider);
   final lang = ref.watch(translationControllerProvider).language.code;
+  final limit = ref.watch(entitiesLimitProvider);
 
   if (loc == null || loc.latitude == null || loc.longitude == null) {
     return <Map<String, dynamic>>[];
@@ -329,8 +324,7 @@ final entitiesRawProvider =
     regionKey: _regionKey(loc.latitude!, loc.longitude!),
     lat: loc.latitude!,
     lon: loc.longitude!,
-    radiusKm: 50,
-    limit: null,
+    limit: limit,
     ttl: const Duration(days: 3),
     forceRefresh: refresh > 0,
     locale: lang,

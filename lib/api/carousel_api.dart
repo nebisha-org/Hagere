@@ -8,22 +8,16 @@ class CarouselApi {
   final String baseUrl = carouselBaseUrl;
 
   Future<List<CarouselItem>> fetchCarousel({
-    String? city,
-    String? state,
+    double? lat,
+    double? lon,
     int limit = 20,
-    String? locale,
   }) async {
     final params = <String, String>{
       'limit': limit.toString(),
     };
-    if (city != null && city.trim().isNotEmpty) {
-      params['city'] = city.trim();
-    }
-    if (state != null && state.trim().isNotEmpty) {
-      params['state'] = state.trim();
-    }
-    if (locale != null && locale.trim().isNotEmpty) {
-      params['locale'] = locale.trim();
+    if (lat != null && lon != null) {
+      params['lat'] = lat.toString();
+      params['lon'] = lon.toString();
     }
 
     final uri =
