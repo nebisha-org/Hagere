@@ -136,7 +136,9 @@ class EntitiesApi {
     final box = Hive.box(EntitiesCache.boxName);
     final limitKey = limit?.toString() ?? 'all';
     final localeKey = (locale ?? 'en').toLowerCase();
-    final cacheKey = 'entities::$regionKey::l$limitKey::lang$localeKey';
+    final baseKey = baseUrl.replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '_');
+    final cacheKey =
+        'entities::$baseKey::$regionKey::l$limitKey::lang$localeKey';
 
     final cached = EntitiesCache.read(box, cacheKey);
     if (!forceRefresh && cached != null && EntitiesCache.isFresh(cached, ttl)) {
@@ -155,7 +157,7 @@ class EntitiesApi {
       );
       final headers = <String, String>{'Accept': 'application/json'};
       final etag = cached == null ? null : EntitiesCache.etag(cached);
-      if (etag != null && etag.isNotEmpty) {
+      if (!forceRefresh && etag != null && etag.isNotEmpty) {
         headers['If-None-Match'] = etag;
       }
 

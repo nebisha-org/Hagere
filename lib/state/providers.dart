@@ -12,6 +12,7 @@ import '../api/carousel_api.dart';
 import 'category_providers.dart';
 import '../models/category.dart';
 import '../utils/category_filter.dart';
+import '../utils/geo.dart';
 import '../models/carousel_item.dart';
 import 'location_name_provider.dart';
 import 'translation_provider.dart';
@@ -343,11 +344,36 @@ final entitiesProvider =
     Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
   final rawAsync = ref.watch(entitiesRawProvider);
   final selectedCategory = ref.watch(selectedCategoryProvider);
+  final loc = ref.watch(effectiveLocationProvider);
+  final locLat = loc?.latitude;
+  final locLon = loc?.longitude;
 
   return rawAsync.whenData((items) {
-    if (selectedCategory == null) return items;
-    return items
-        .where((e) => matchesCategoryForEntity(e, selectedCategory))
-        .toList();
+    final filtered = selectedCategory == null
+        ? items
+        : items
+            .where((e) => matchesCategoryForEntity(e, selectedCategory))
+            .toList();
+
+    if (locLat == null || locLon == null) {
+      return filtered;
+    }
+
+    final withDistance = filtered.map((e) {
+      final lat = extractCoord(e, 'lat');
+      final lon = extractCoord(e, 'lon');
+      final dist = (lat != null && lon != null)
+          ? distanceMeters(
+              lat1: locLat,
+              lon1: locLon,
+              lat2: lat,
+              lon2: lon,
+            )
+          : double.infinity;
+      return MapEntry(e, dist);
+    }).toList();
+
+    withDistance.sort((a, b) => a.value.compareTo(b.value));
+    return withDistance.map((e) => e.key).toList();
   });
 });

@@ -12,6 +12,7 @@ import '../state/translation_provider.dart';
 import '../state/translation_strings.dart';
 import '../state/qc_mode.dart';
 import '../state/qc_city_provider.dart';
+import '../state/override_providers.dart';
 import '../models/carousel_item.dart';
 
 import 'entities_screen.dart';
@@ -45,6 +46,17 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       return;
     }
     notifier.startEditing();
+  }
+
+  void _setAppTitleOverride(String value) {
+    final lang = ref.read(translationControllerProvider).language.code;
+    ref.read(appTextOverridesLocalProvider.notifier).update((state) {
+      final next = Map<String, Map<String, String>>.from(state);
+      final perLang = Map<String, String>.from(next[lang] ?? const {});
+      perLang['title'] = value;
+      next[lang] = perLang;
+      return next;
+    });
   }
 
   String _normalize(String raw) {
@@ -176,11 +188,36 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final entityIdAsync = ref.watch(currentEntityIdProvider);
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
     final carouselAsync = ref.watch(carouselItemsProvider);
+    final appTitle = ref.watch(resolvedAppTitleProvider);
+    final appTitleWidget = QcEditableText(
+      appTitle,
+      entityType: 'app',
+      entityId: 'title',
+      fieldKey: 'title',
+      translate: false,
+      onUpdated: _setAppTitleOverride,
+    );
 
     if (loc == null || loc.latitude == null || loc.longitude == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const TrText('All Habesha'),
+          title: kQcMode
+              ? RawGestureDetector(
+                  gestures: {
+                    LongPressGestureRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                            LongPressGestureRecognizer>(
+                      () => LongPressGestureRecognizer(
+                        duration: _qcLongPressDuration,
+                      ),
+                      (instance) {
+                        instance.onLongPress = _cycleQcState;
+                      },
+                    ),
+                  },
+                  child: appTitleWidget,
+                )
+              : appTitleWidget,
         ),
         body: const Center(
           child: Column(
@@ -213,9 +250,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     },
                   ),
                 },
-                child: const TrText('All Habesha'),
+                child: appTitleWidget,
               )
-            : const TrText('All Habesha'),
+            : appTitleWidget,
         actions: null,
       ),
       body: catsAsync.when(
@@ -539,7 +576,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                               ref.invalidate(carouselItemsProvider);
                               ref.invalidate(entitiesRawProvider);
                               ref.invalidate(availableCategoriesProvider);
-                              ref.read(entitiesRefreshProvider.notifier).state++;
                             },
                           ),
                         ),

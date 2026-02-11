@@ -9,6 +9,41 @@ final overridesApiProvider = Provider<OverridesApi>((ref) {
   return OverridesApi();
 });
 
+final appTextOverridesLocalProvider =
+    StateProvider<Map<String, Map<String, String>>>((ref) => {});
+
+final appTextOverridesProvider =
+    FutureProvider<Map<String, String>>((ref) async {
+  final api = ref.watch(overridesApiProvider);
+  final lang = ref.watch(translationControllerProvider).language.code;
+  try {
+    return await api.fetchLatest(
+      entityType: 'app',
+      entityId: 'title',
+      locale: lang,
+    );
+  } catch (_) {
+    return <String, String>{};
+  }
+});
+
+final resolvedAppTitleProvider = Provider<String>((ref) {
+  final controller = ref.watch(translationControllerProvider);
+  final lang = controller.language.code;
+  final remote = ref.watch(appTextOverridesProvider).maybeWhen(
+        data: (v) => v,
+        orElse: () => const <String, String>{},
+      );
+  final localAll = ref.watch(appTextOverridesLocalProvider);
+  final local = localAll[lang] ?? const <String, String>{};
+  final merged = <String, String>{...remote, ...local};
+  final overrideTitle = merged['title']?.trim();
+  if (overrideTitle != null && overrideTitle.isNotEmpty) {
+    return overrideTitle;
+  }
+  return controller.tr('All Habesha');
+});
+
 final categoryOverridesLocalProvider =
     StateProvider<Map<String, Map<String, Map<String, String>>>>(
         (ref) => {});
