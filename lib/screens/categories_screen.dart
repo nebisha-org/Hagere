@@ -11,6 +11,7 @@ import '../state/stripe_mode_provider.dart';
 import '../state/translation_provider.dart';
 import '../state/translation_strings.dart';
 import '../state/qc_mode.dart';
+import '../state/qc_city_provider.dart';
 import '../models/carousel_item.dart';
 
 import 'entities_screen.dart';
@@ -34,6 +35,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   bool _comingSoonShown = false;
   String? _lastCityKey;
   static const Duration _qcLongPressDuration = Duration(seconds: 6);
+  late final ProviderSubscription<AsyncValue<String>> _locationNameSub;
 
   void _cycleQcState() {
     final qcState = ref.read(qcEditStateProvider);
@@ -145,7 +147,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         controller.prefetch(kTranslationSeed);
       }
     });
-    ref.listen<AsyncValue<String>>(locationNameProvider, (prev, next) {
+    _locationNameSub =
+        ref.listenManual<AsyncValue<String>>(locationNameProvider, (prev, next) {
       next.whenData((label) {
         final city = _extractCity(label);
         if (city == null) return;
@@ -157,6 +160,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         _showComingSoon(city);
       });
     });
+  }
+
+  @override
+  void dispose() {
+    _locationNameSub.close();
+    super.dispose();
   }
 
   @override
@@ -250,10 +259,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           final addListingIndex = categoriesStart + categoriesCount;
           final sponsoredIndex = categoriesStart + categoriesCount + 1;
           final qcActive = qcState.visible || qcState.editing;
-          final showStripeToggle = (kQcMode && qcActive) || !kReleaseMode;
+          final showStripeToggle = kQcMode && qcActive;
           final stripeToggleIndex = categoriesStart + categoriesCount + 2;
-          final totalRows =
-              categoriesStart + categoriesCount + 2 + (showStripeToggle ? 1 : 0);
+          final showQcCityToggle = showStripeToggle;
+          final qcCityToggleIndex = stripeToggleIndex + (showStripeToggle ? 1 : 0);
+          final totalRows = categoriesStart +
+              categoriesCount +
+              2 +
+              (showStripeToggle ? 1 : 0) +
+              (showQcCityToggle ? 1 : 0);
 
           return LayoutBuilder(
             builder: (context, constraints) {
@@ -283,13 +297,22 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         segments: const [
                           ButtonSegment(
                             value: AppLanguage.english,
-                            label: TrText('English', translate: false),
+                            label: TrText('EN', translate: false),
                           ),
                           ButtonSegment(
                             value: AppLanguage.amharic,
-                            label: TrText('አማርኛ', translate: false),
+                            label: TrText('አማ', translate: false),
                           ),
                         ],
+                        showSelectedIcon: false,
+                        style: const ButtonStyle(
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                          minimumSize: MaterialStatePropertyAll(Size(0, 32)),
+                          padding: MaterialStatePropertyAll(
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          ),
+                        ),
                         selected: {controller.language},
                         onSelectionChanged: (value) {
                           if (value.isEmpty) return;
@@ -477,6 +500,47 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     title: const TrText('Stripe mode'),
                     subtitle: TrText(isTest ? 'Test' : 'Live'),
                     secondary: const Icon(Icons.payment),
+                  );
+                }
+
+                if (showQcCityToggle && i == qcCityToggleIndex) {
+                  final selectedKey = ref.watch(qcCityOverrideProvider);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_city),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedKey,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              label: TrText('QC city', translate: false),
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            hint: const TrText('Choose city', translate: false),
+                            items: qcCityOptions
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c.key,
+                                    child: Text(c.label),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              ref
+                                  .read(qcCityOverrideProvider.notifier)
+                                  .setOverride(value);
+                              ref.invalidate(locationNameProvider);
+                              ref.invalidate(carouselItemsProvider);
+                              ref.read(entitiesRefreshProvider.notifier).state++;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
 
