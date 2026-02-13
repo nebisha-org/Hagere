@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../config/env.dart';
 import '../services/payments_api.dart';
 import '../services/checkout_launcher.dart';
+import '../state/payment_type_provider.dart';
 import '../state/stripe_mode_provider.dart';
 import '../widgets/tr_text.dart';
 import '../state/translation_provider.dart';
@@ -78,15 +80,27 @@ class _PromoteCategoryTileState extends ConsumerState<PromoteCategoryTile> {
   Future<void> _onPromote() async {
     setState(() => _loading = true);
     try {
-      final api = PaymentsApi(baseUrl: widget.paymentsBaseUrl);
       final stripeMode = ref.read(stripeModeProvider);
+      final paymentType = ref.read(paymentTypeProvider);
+      final checkoutBaseUrl = paymentType == PaymentType.subscription
+          ? subscriptionPaymentsBaseUrl
+          : widget.paymentsBaseUrl;
+      final api = PaymentsApi(baseUrl: checkoutBaseUrl);
 
-      final checkoutUrl = await api.createCheckoutSession(
-        entityId: widget.entityId,
-        promotionTier: 'categoryFeatured',
-        categoryId: widget.categoryId,
-        stripeMode: stripeMode.name,
-      );
+      final checkoutUrl = paymentType == PaymentType.subscription
+          ? await api.createSubscriptionCheckoutSession(
+              entityId: widget.entityId,
+              promotionTier: 'categoryFeatured',
+              categoryId: widget.categoryId,
+              stripeMode: stripeMode.name,
+              intervalDays: 7,
+            )
+          : await api.createCheckoutSession(
+              entityId: widget.entityId,
+              promotionTier: 'categoryFeatured',
+              categoryId: widget.categoryId,
+              stripeMode: stripeMode.name,
+            );
 
       await CheckoutLauncher.openExternal(checkoutUrl);
 

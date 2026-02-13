@@ -1,19 +1,21 @@
 import '../config/env.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/admin_items_api.dart';
 import '../state/providers.dart';
 import '../utils/geo.dart';
 import '../state/category_providers.dart';
 import '../state/location_name_provider.dart';
 import '../state/translation_provider.dart';
 import '../state/qc_mode.dart';
+import '../state/qc_admin_key_provider.dart';
 import '../state/override_providers.dart';
-import 'package:location/location.dart';
 import 'add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
 import 'package:agerelige_flutter_client/widgets/promote_category_tile.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
+import 'package:agerelige_flutter_client/widgets/qc_admin_key_dialog.dart';
 
 class EntitiesScreen extends ConsumerWidget {
   const EntitiesScreen({super.key});
@@ -34,6 +36,96 @@ class EntitiesScreen extends ConsumerWidget {
             orElse: () => selectedCategory,
           ));
     final qcState = ref.watch(qcEditStateProvider);
+    final showDelete = kQcMode && qcState.visible && qcState.editing;
+
+    Future<void> deleteEntity(Map<String, dynamic> raw) async {
+      final pk = (raw['PK'] ?? '').toString().trim();
+      final sk = (raw['SK'] ?? 'META').toString().trim();
+      if (pk.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: TrText('Missing item PK')),
+        );
+        return;
+      }
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const TrText('Delete item?'),
+          content: TrText(
+            'This will remove it from the list and delete it on the backend.\n\nPK: $pk',
+            translate: false,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const TrText('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const TrText('Delete'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      if (!context.mounted) return;
+
+      var adminKey = ref.read(qcAdminApiKeyProvider).trim();
+      if (adminKey.isEmpty) {
+        final entered = await showQcAdminKeyDialog(
+          context: context,
+          initialValue: adminKey,
+        );
+        if (entered == null) return;
+        if (!context.mounted) return;
+        await ref.read(qcAdminApiKeyProvider.notifier).setKey(entered);
+        adminKey = entered.trim();
+      }
+
+      if (!context.mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const AlertDialog(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 12),
+              Expanded(child: TrText('Deleting...')),
+            ],
+          ),
+        ),
+      );
+
+      try {
+        await AdminItemsApi().deleteItem(pk: pk, sk: sk, adminKey: adminKey);
+        if (context.mounted) {
+          Navigator.of(context).pop(); // loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: TrText('Deleted')),
+          );
+        }
+
+        ref.read(entitiesRefreshProvider.notifier).state++;
+        ref.invalidate(entitiesRawProvider);
+      } catch (e) {
+        if (context.mounted) {
+          Navigator.of(context).pop(); // loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Delete failed: $e')),
+          );
+        }
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -79,6 +171,21 @@ class EntitiesScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AddListingScreen(
+                            origin: AddListingOrigin.categoryList,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.trending_up),
+                      label: const TrText('Starting free promote your listing'),
+                    ),
+                  ),
                   // Text(
                   //   'LOC: ${loc.latitude?.toStringAsFixed(6)}, '
                   //   '${loc.longitude?.toStringAsFixed(6)}',
@@ -115,9 +222,12 @@ class EntitiesScreen extends ConsumerWidget {
                                   return AddListingCard(
                                     subtitle:
                                         'Add your business to this category.',
-                                    onTap: () =>
-                                        Navigator.of(context).pushNamed(
-                                      AddListingScreen.routeName,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const AddListingScreen(
+                                          origin: AddListingOrigin.categoryList,
+                                        ),
+                                      ),
                                     ),
                                   );
                                 }
@@ -161,10 +271,12 @@ class EntitiesScreen extends ConsumerWidget {
                                       child: OutlinedButton.icon(
                                         onPressed: () {
                                           ref
-                                              .read(entitiesLimitProvider.notifier)
+                                              .read(entitiesLimitProvider
+                                                  .notifier)
                                               .state += 1000;
                                           ref
-                                              .read(entitiesRefreshProvider.notifier)
+                                              .read(entitiesRefreshProvider
+                                                  .notifier)
                                               .state++;
                                           ref.invalidate(entitiesRawProvider);
                                         },
@@ -180,8 +292,7 @@ class EntitiesScreen extends ConsumerWidget {
                                 // -----------------------------
                                 final e = items[i];
                                 final entityId =
-                                    (e['id'] ?? e['place_id'] ?? '')
-                                        .toString();
+                                    (e['id'] ?? e['place_id'] ?? '').toString();
                                 final phone =
                                     (e['contactPhone'] ?? e['phone'] ?? '')
                                         .toString()
@@ -210,7 +321,7 @@ class EntitiesScreen extends ConsumerWidget {
                                       : '${(meters / 1000).toStringAsFixed(1)} km';
                                 }
 
-                                return ListTile(
+                                final tile = ListTile(
                                   title: QcEditableText(
                                     e['name']?.toString() ?? 'Unknown',
                                     entityType: 'entity',
@@ -246,14 +357,39 @@ class EntitiesScreen extends ConsumerWidget {
                                       ),
                                     ],
                                   ),
-                                  trailing:
-                                      QcEditableText(
-                                        e['subtype']?.toString() ?? '',
-                                        entityType: 'entity',
-                                        entityId: entityId,
-                                        fieldKey: 'subtype',
-                                      ),
+                                  trailing: QcEditableText(
+                                    e['subtype']?.toString() ?? '',
+                                    entityType: 'entity',
+                                    entityId: entityId,
+                                    fieldKey: 'subtype',
+                                  ),
                                   isThreeLine: true,
+                                );
+
+                                if (!showDelete) return tile;
+
+                                return Stack(
+                                  children: [
+                                    tile,
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      child: IconButton(
+                                        tooltip: 'Delete',
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.red,
+                                          size: 18,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 34,
+                                          minHeight: 34,
+                                        ),
+                                        onPressed: () => deleteEntity(e),
+                                      ),
+                                    ),
+                                  ],
                                 );
                               },
                             );
@@ -279,8 +415,7 @@ class _LocationGate extends ConsumerWidget {
             await ref.read(locationControllerProvider).ensureLocationReady();
           } catch (e) {
             if (context.mounted) {
-              final translator =
-                  ref.read(translationControllerProvider);
+              final translator = ref.read(translationControllerProvider);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(

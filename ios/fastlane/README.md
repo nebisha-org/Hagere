@@ -23,6 +23,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Push a new beta build to TestFlight
 
+### ios upload_existing_ipa
+
+```sh
+[bundle exec] fastlane ios upload_existing_ipa
+```
+
+Upload existing Runner.ipa to TestFlight (fast)
+
 ### ios enable_sign_in_with_apple
 
 ```sh
@@ -30,6 +38,22 @@ Push a new beta build to TestFlight
 ```
 
 Enable Sign in with Apple capability for the app
+
+### ios upload_screenshots_only
+
+```sh
+[bundle exec] fastlane ios upload_screenshots_only
+```
+
+Upload App Store screenshots only (no binary/metadata upload)
+
+### ios submit_for_review_only
+
+```sh
+[bundle exec] fastlane ios submit_for_review_only
+```
+
+Submit existing App Store version for review (no binary/screenshot upload)
 
 ----
 

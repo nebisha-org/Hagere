@@ -4,8 +4,28 @@ Date: 2026-01-29
 Owner: Nebyate Endalamaw
 Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch: v2)
 
+## ✅ Latest updates (2026-02-13)
+- Google Play Console account type migration completed:
+  - `Account type: Organization`
+  - Organization: `DigitalNebi LLC`
+  - D-U-N-S: `144920149`
+  - Website verification completed: `https://www.digitalnebi.com/`
+- App Store Connect:
+  - Rejection context: metadata/screenshots showed development artifact (`DEBUG` banner).
+  - Resolution path used: replace screenshots and reply to App Review; new binary not required for screenshot-only metadata fix.
+  - Apple organization enrollment transfer form submitted by user (individual -> organization).
+- iOS/TestFlight:
+  - Previous good upload: `1.0.1 (1770808108)`.
+  - Latest upload completed: `1.0.1 (1770808109)` on 2026-02-13 via `fastlane ios beta`.
+  - Fastlane confirmed: "Successfully uploaded package to App Store Connect."
+- Recent code fix included in latest TestFlight upload:
+  - Stripe payment type toggle should only appear in QC edit mode (not just QC active):
+    - `lib/screens/categories_screen.dart`
+    - `showPaymentTypeToggle = kQcMode && qcState.editing;`
+
 ## ✅ Priority (must follow)
 - Focus on **fast release**. Avoid extra commentary or scope beyond the current focus.
+- After every code fix, run the app on the iOS simulator (`flutter run -d "iPhone 16e"`) before reporting completion.
 
 ## 📁 AllHabesha repo map
 - Frontend: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client

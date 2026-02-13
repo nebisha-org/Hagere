@@ -9,6 +9,7 @@ import 'package:firebase_analytics/observer.dart';
 
 import 'package:agerelige_flutter_client/screens/categories_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
+import 'package:agerelige_flutter_client/screens/feedback_screen.dart';
 import 'package:agerelige_flutter_client/cache/entities_cache.dart';
 import 'package:agerelige_flutter_client/state/translation_provider.dart';
 import 'firebase_options.dart';
@@ -38,11 +39,15 @@ class AgereLigeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AgereLige',
+      // Always hide the Flutter debug banner. Reviewers flagged debug banners in
+      // App Store screenshots (Guideline 2.3.10).
+      debugShowCheckedModeBanner: false,
+      title: 'AllHabesha',
       theme: ThemeData(useMaterial3: true),
       home: const CategoriesScreen(),
       routes: {
         AddListingScreen.routeName: (_) => const AddListingScreen(),
+        FeedbackScreen.routeName: (_) => const FeedbackScreen(),
       },
       navigatorObservers: [
         FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),

@@ -20,15 +20,26 @@ import '../state/category_providers.dart';
 import '../state/override_providers.dart';
 import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
+import '../state/payment_type_provider.dart';
 import '../state/stripe_mode_provider.dart';
 import '../state/translation_provider.dart';
 import '../widgets/tr_text.dart';
 
+enum AddListingOrigin {
+  carousel,
+  categoryList,
+}
+
 class AddListingScreen extends ConsumerStatefulWidget {
-  const AddListingScreen({super.key});
+  const AddListingScreen({
+    super.key,
+    this.origin = AddListingOrigin.carousel,
+  });
   static const routeName = '/add-listing';
 
-  @override  
+  final AddListingOrigin origin;
+
+  @override
   ConsumerState<AddListingScreen> createState() => _AddListingScreenState();
 }
 
@@ -38,10 +49,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
+  final _phone1Ctrl = TextEditingController();
+  final _phone2Ctrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
-  final _photoUrlsCtrl = TextEditingController();
   final _tagsCtrl = TextEditingController();
   final _websiteCtrl = TextEditingController();
   final _youtubeCtrl = TextEditingController();
@@ -52,17 +63,17 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   String? _authLabel;
   bool _guestMode = false;
   StreamSubscription<User?>? _authSub;
+  static Future<void>? _googleInitShared;
   Future<void>? _googleInit;
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   final _instagramCtrl = TextEditingController();
   final _facebookCtrl = TextEditingController();
-  final _whatsappCtrl = TextEditingController();
+  final _twitterCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _countryCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
   final _stateCtrl = TextEditingController();
   final _neighborhoodCtrl = TextEditingController();
-  final _mapLinkCtrl = TextEditingController();
   final _hoursCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
 
@@ -72,14 +83,19 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
   bool _saving = false;
   bool _promoting = false;
+  bool _phone1HasWhatsApp = false;
+  bool _phone1HasTelegram = false;
+  bool _phone2HasWhatsApp = false;
+  bool _phone2HasTelegram = false;
 
   @override
   void initState() {
     super.initState();
-    _googleInit = GoogleSignIn.instance.initialize();
-    _guestMode = true;
-    _authUnlocked = true;
-    _authLabel = 'Guest';
+    _googleInitShared ??= GoogleSignIn.instance.initialize();
+    _googleInit = _googleInitShared;
+    _guestMode = false;
+    _authUnlocked = false;
+    _authLabel = null;
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (!mounted) return;
       if (user == null) {
@@ -109,23 +125,22 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   void dispose() {
     _authSub?.cancel();
     _nameCtrl.dispose();
-    _phoneCtrl.dispose();
+    _phone1Ctrl.dispose();
+    _phone2Ctrl.dispose();
     _addressCtrl.dispose();
     _descriptionCtrl.dispose();
-    _photoUrlsCtrl.dispose();
     _tagsCtrl.dispose();
     _websiteCtrl.dispose();
     _youtubeCtrl.dispose();
     _tiktokCtrl.dispose();
     _instagramCtrl.dispose();
     _facebookCtrl.dispose();
-    _whatsappCtrl.dispose();
+    _twitterCtrl.dispose();
     _emailCtrl.dispose();
     _countryCtrl.dispose();
     _cityCtrl.dispose();
     _stateCtrl.dispose();
     _neighborhoodCtrl.dispose();
-    _mapLinkCtrl.dispose();
     _hoursCtrl.dispose();
     _priceCtrl.dispose();
     super.dispose();
@@ -166,6 +181,25 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         return 'Too many attempts. Try again later.';
       default:
         return e.message ?? 'Sign in failed (${e.code}).';
+    }
+  }
+
+  String _googleErrorMessage(GoogleSignInException e) {
+    switch (e.code) {
+      case GoogleSignInExceptionCode.canceled:
+        return 'Google sign-in canceled.';
+      case GoogleSignInExceptionCode.interrupted:
+        return 'Google sign-in was interrupted. Try again.';
+      case GoogleSignInExceptionCode.clientConfigurationError:
+        return 'Google sign-in is not configured correctly for this app.';
+      case GoogleSignInExceptionCode.providerConfigurationError:
+        return 'Google provider configuration is invalid.';
+      case GoogleSignInExceptionCode.uiUnavailable:
+        return 'Google sign-in UI is unavailable right now.';
+      case GoogleSignInExceptionCode.userMismatch:
+        return 'Google account mismatch. Please try again.';
+      case GoogleSignInExceptionCode.unknownError:
+        return e.description ?? 'Google sign-in failed.';
     }
   }
 
@@ -233,7 +267,6 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       "categoryId": category.id,
       "name": _nameCtrl.text.trim(),
       "address": _addressCtrl.text.trim(),
-      "contactPhone": _phoneCtrl.text.trim(),
       "remote": false,
     };
 
@@ -248,30 +281,33 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         .where((e) => e.isNotEmpty)
         .toList();
 
+    putIfNotEmpty("contactPhone", _phone1Ctrl.text);
+    putIfNotEmpty("contactPhone2", _phone2Ctrl.text);
+    if (_phone1HasWhatsApp) body["contactPhoneHasWhatsApp"] = true;
+    if (_phone1HasTelegram) body["contactPhoneHasTelegram"] = true;
+    if (_phone2HasWhatsApp) body["contactPhone2HasWhatsApp"] = true;
+    if (_phone2HasTelegram) body["contactPhone2HasTelegram"] = true;
+
     putIfNotEmpty("description", _descriptionCtrl.text);
     putIfNotEmpty("website", _websiteCtrl.text);
     putIfNotEmpty("youtube", _youtubeCtrl.text);
     putIfNotEmpty("tiktok", _tiktokCtrl.text);
     putIfNotEmpty("instagram", _instagramCtrl.text);
     putIfNotEmpty("facebook", _facebookCtrl.text);
-    putIfNotEmpty("whatsapp", _whatsappCtrl.text);
+    putIfNotEmpty("twitter", _twitterCtrl.text);
     putIfNotEmpty("email", _emailCtrl.text);
-    putIfNotEmpty("city", _cityCtrl.text);
-    putIfNotEmpty("state", _stateCtrl.text);
-    putIfNotEmpty("country", _countryCtrl.text);
+    // City/State/Country are filled from the city picker. Don't accept manual typing.
+    if (_selectedCities.isEmpty) {
+      putIfNotEmpty("city", _cityCtrl.text);
+      putIfNotEmpty("state", _stateCtrl.text);
+      putIfNotEmpty("country", _countryCtrl.text);
+    }
     putIfNotEmpty("neighborhood", _neighborhoodCtrl.text);
-    putIfNotEmpty("mapLink", _mapLinkCtrl.text);
     putIfNotEmpty("hours", _hoursCtrl.text);
     putIfNotEmpty("priceRange", _priceCtrl.text);
 
     final tags = splitList(_tagsCtrl.text);
     if (tags.isNotEmpty) body["tags"] = tags;
-
-    final photos = splitList(_photoUrlsCtrl.text);
-    if (photos.isNotEmpty) {
-      body["images"] = photos;
-      body["photo"] = photos.first;
-    }
     if (_selectedCities.isNotEmpty) {
       body["cityIds"] = _selectedCities.map((c) => c.id).toList();
       body["cities"] = _selectedCities.map((c) => c.city).toList();
@@ -300,6 +336,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       if (_selectedCities.length == 1) {
         final only = _selectedCities.first;
         body["cityId"] = only.id;
+        body["city"] = only.city;
+        if (only.region.trim().isNotEmpty) body["state"] = only.region.trim();
+        if (only.country.trim().isNotEmpty)
+          body["country"] = only.country.trim();
         if (only.countryCode.trim().isNotEmpty) {
           body["countryCode"] = only.countryCode;
         }
@@ -360,18 +400,34 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   }
 
   Future<void> _startCheckout({required String entityId}) async {
-    final uri = Uri.parse('$paymentsBaseUrl/payments/checkout-session');
+    final paymentType = ref.read(paymentTypeProvider);
+    final checkoutBaseUrl = paymentType == PaymentType.subscription
+        ? subscriptionPaymentsBaseUrl
+        : paymentsBaseUrl;
+    final checkoutPath = paymentType == PaymentType.subscription
+        ? '/payments/subscription-checkout-session'
+        : '/payments/checkout-session';
+    final uri = Uri.parse('$checkoutBaseUrl$checkoutPath');
     final stripeMode = ref.read(stripeModeProvider);
-    final stripeModeValue =
-        stripeMode == StripeMode.test ? 'test' : 'live';
+    final stripeModeValue = stripeMode == StripeMode.test ? 'test' : 'live';
+    final promotionTier = widget.origin == AddListingOrigin.categoryList
+        ? 'categoryFeatured'
+        : 'homeSponsored';
+    final categoryId = widget.origin == AddListingOrigin.categoryList
+        ? (ref.read(selectedCategoryProvider)?.id ?? '').trim()
+        : '';
 
     final payload = <String, dynamic>{
       "entityId": entityId,
-      "promotionTier": "homeSponsored",
+      "promotionTier": promotionTier,
+      if (categoryId.isNotEmpty) "categoryId": categoryId,
       "stripeMode": stripeModeValue,
+      if (paymentType == PaymentType.subscription) "intervalDays": 7,
     };
 
     _log('CHECKOUT: POST $uri');
+    _log('CHECKOUT MODE: ${paymentType.name}');
+    _log('CHECKOUT BASE URL: $checkoutBaseUrl');
     _log('CHECKOUT BODY: ${jsonEncode(payload)}');
 
     final res = await http
@@ -408,6 +464,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (_skipStripeLaunch) {
       _log('CHECKOUT: skip launch (SKIP_STRIPE_LAUNCH)');
       ref.invalidate(homeSponsoredProvider);
+      ref.invalidate(carouselItemsProvider);
+      ref.invalidate(entitiesRawProvider);
       debugPrint("CHECKOUT URL => $checkoutUrl");
       return;
     }
@@ -419,6 +477,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     _log('CHECKOUT: launchUrl ok=$ok');
     ref.invalidate(homeSponsoredProvider);
+    ref.invalidate(carouselItemsProvider);
+    ref.invalidate(entitiesRawProvider);
     debugPrint("CHECKOUT URL => $checkoutUrl");
 
     if (!ok) {
@@ -441,7 +501,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         await _createEntity();
         await _analytics.logEvent(
           name: 'listing_save',
-          parameters: {'promote': false},
+          // Firebase Analytics only accepts String/num values.
+          parameters: {'promote': 0},
         );
         ref.invalidate(carouselItemsProvider);
         if (!mounted) return;
@@ -465,7 +526,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         final entityId = await _createEntity();
         await _analytics.logEvent(
           name: 'listing_save',
-          parameters: {'promote': true},
+          // Firebase Analytics only accepts String/num values.
+          parameters: {'promote': 1},
         );
         ref.invalidate(carouselItemsProvider);
         await _analytics.logEvent(name: 'promotion_checkout_start');
@@ -558,125 +620,276 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   }
 
   void _syncCityFieldsFromSelection() {
+    if (_selectedCities.isEmpty) {
+      _cityCtrl.text = '';
+      _stateCtrl.text = '';
+      _countryCtrl.text = '';
+      return;
+    }
+
     if (_selectedCities.length == 1) {
       final only = _selectedCities.first;
       _cityCtrl.text = only.city;
       _stateCtrl.text = only.region;
       _countryCtrl.text = only.country;
+      return;
     }
+
+    // Multiple selection: show a display-only summary, but we avoid sending these
+    // fields to the backend (we rely on cityIds/cities/etc).
+    _cityCtrl.text = '${_selectedCities.length} cities selected';
+    _stateCtrl.text = '';
+    _countryCtrl.text = '';
   }
 
   Future<void> _chooseCities() async {
     String query = '';
     final selectedIds = _selectedCities.map((c) => c.id).toSet();
     final translator = ref.read(translationControllerProvider);
+    final maxSheetHeight = MediaQuery.of(context).size.height * 0.88;
 
     final result = await showModalBottomSheet<List<HabeshaCity>>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      constraints: BoxConstraints(maxHeight: maxSheetHeight),
       builder: (ctx) {
-        return SafeArea(
-          child: StatefulBuilder(
-            builder: (context, setSheetState) {
-              final q = query.trim().toLowerCase();
-              final filtered = q.isEmpty
-                  ? kHabeshaCities
-                  : kHabeshaCities
-                      .where(
-                        (c) => c.label.toLowerCase().contains(q),
-                      )
-                      .toList();
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final allIds = kHabeshaCities.map((c) => c.id).toSet();
 
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: TrText(
-                              'Pick cities',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                          Text(
-                            '${selectedIds.length} ${translator.tr('selected')}',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: () =>
-                                setSheetState(() => selectedIds.clear()),
-                            child: const TrText('Clear'),
-                          ),
-                          const SizedBox(width: 4),
-                          ElevatedButton(
-                            onPressed: () {
-                              final chosen = kHabeshaCities
-                                  .where((c) => selectedIds.contains(c.id))
-                                  .toList();
-                              Navigator.of(ctx).pop(chosen);
-                            },
-                            child: const TrText('Done'),
-                          ),
-                        ],
+            bool? triStateFor(Set<String> ids) {
+              if (ids.isEmpty) return false;
+              final selectedCount = ids.where(selectedIds.contains).length;
+              if (selectedCount == 0) return false;
+              if (selectedCount == ids.length) return true;
+              return null; // partial
+            }
+
+            void toggleGroup(Set<String> ids) {
+              final allSelected =
+                  ids.isNotEmpty && ids.every(selectedIds.contains);
+              setSheetState(() {
+                if (allSelected) {
+                  selectedIds.removeAll(ids);
+                } else {
+                  selectedIds.addAll(ids);
+                }
+              });
+            }
+
+            void toggleCity(String id) {
+              setSheetState(() {
+                if (selectedIds.contains(id)) {
+                  selectedIds.remove(id);
+                } else {
+                  selectedIds.add(id);
+                }
+              });
+            }
+
+            final q = query.trim().toLowerCase();
+            bool matches(HabeshaCity c) {
+              if (q.isEmpty) return true;
+              final hay = [
+                c.city,
+                c.region,
+                c.country,
+                c.countryCode,
+                c.continent,
+              ].join(' ').toLowerCase();
+              return hay.contains(q);
+            }
+
+            // Visible grouping: continent -> countryCode -> cities
+            final Map<String, Map<String, List<HabeshaCity>>> grouped = {};
+            for (final city in kHabeshaCities) {
+              if (!matches(city)) continue;
+              final cont = city.continent;
+              final countryCode = city.countryCode.toUpperCase();
+              final byCountry = grouped.putIfAbsent(cont, () => {});
+              byCountry.putIfAbsent(countryCode, () => []).add(city);
+            }
+
+            const continentOrder = [
+              'North America',
+              'Europe',
+              'Asia',
+              'Africa',
+              'Other',
+            ];
+            final continents = grouped.keys.toList()
+              ..sort((a, b) {
+                final ai = continentOrder.indexOf(a);
+                final bi = continentOrder.indexOf(b);
+                if (ai == -1 && bi == -1) return a.compareTo(b);
+                if (ai == -1) return 1;
+                if (bi == -1) return -1;
+                return ai.compareTo(bi);
+              });
+
+            // Keep the visible lists stable/predictable.
+            for (final byCountry in grouped.values) {
+              for (final cities in byCountry.values) {
+                cities.sort(
+                  (a, b) => a.city.toLowerCase().compareTo(
+                        b.city.toLowerCase(),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: TextField(
-                        decoration: const InputDecoration(
-                          label: TrText('Search'),
-                          border: OutlineInputBorder(),
+                );
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: TrText(
+                            'Pick cities',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
-                        onChanged: (v) => setSheetState(() => query = v),
-                      ),
+                        Text(
+                          '${selectedIds.length} ${translator.tr('selected')}',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () =>
+                              setSheetState(() => selectedIds.clear()),
+                          child: const TrText('Clear'),
+                        ),
+                        const SizedBox(width: 4),
+                        ElevatedButton(
+                          onPressed: () {
+                            final chosen = kHabeshaCities
+                                .where((c) => selectedIds.contains(c.id))
+                                .toList();
+                            Navigator.of(ctx).pop(chosen);
+                          },
+                          child: const TrText('Done'),
+                        ),
+                      ],
                     ),
-                    Flexible(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (_, i) {
-                          final c = filtered[i];
-                          final checked = selectedIds.contains(c.id);
-                          return ListTile(
-                            title: TrText(c.city),
-                            subtitle: TrText(
-                              c.region.trim().isEmpty
-                                  ? c.country
-                                  : '${c.region}, ${c.country}',
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        label: TrText('Search'),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (v) => setSheetState(() => query = v),
+                    ),
+                  ),
+                  CheckboxListTile(
+                    value: triStateFor(allIds),
+                    tristate: true,
+                    onChanged: (_) => toggleGroup(allIds),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    dense: true,
+                    title: const TrText('All'),
+                    subtitle: TrText(
+                      '${allIds.length} cities',
+                      translate: false,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      children: [
+                        for (final cont in continents)
+                          ExpansionTile(
+                            leading: Checkbox(
+                              tristate: true,
+                              value: triStateFor(
+                                kHabeshaCities
+                                    .where((c) => c.continent == cont)
+                                    .map((c) => c.id)
+                                    .toSet(),
+                              ),
+                              onChanged: (_) {
+                                final ids = kHabeshaCities
+                                    .where((c) => c.continent == cont)
+                                    .map((c) => c.id)
+                                    .toSet();
+                                toggleGroup(ids);
+                              },
                             ),
-                            onTap: () {
-                              setSheetState(() {
-                                if (checked) {
-                                  selectedIds.remove(c.id);
-                                } else {
-                                  selectedIds.add(c.id);
-                                }
-                              });
-                            },
-                            trailing: checked
-                                ? const Icon(Icons.check_circle)
-                                : const Icon(Icons.circle_outlined),
-                          );
-                        },
-                      ),
+                            title: Text(cont),
+                            children: [
+                              for (final countryEntry
+                                  in (grouped[cont] ?? {}).entries.toList()
+                                    ..sort((a, b) {
+                                      final an = a.value.isEmpty
+                                          ? a.key
+                                          : a.value.first.country;
+                                      final bn = b.value.isEmpty
+                                          ? b.key
+                                          : b.value.first.country;
+                                      return an.compareTo(bn);
+                                    }))
+                                ExpansionTile(
+                                  leading: Checkbox(
+                                    tristate: true,
+                                    value: triStateFor(
+                                      kHabeshaCities
+                                          .where((c) =>
+                                              c.countryCode.toUpperCase() ==
+                                              countryEntry.key)
+                                          .map((c) => c.id)
+                                          .toSet(),
+                                    ),
+                                    onChanged: (_) {
+                                      final ids = kHabeshaCities
+                                          .where((c) =>
+                                              c.countryCode.toUpperCase() ==
+                                              countryEntry.key)
+                                          .map((c) => c.id)
+                                          .toSet();
+                                      toggleGroup(ids);
+                                    },
+                                  ),
+                                  title: Text(
+                                    countryEntry.value.isEmpty
+                                        ? countryEntry.key
+                                        : '${countryEntry.value.first.country} (${countryEntry.key})',
+                                  ),
+                                  children: [
+                                    for (final c in countryEntry.value)
+                                      CheckboxListTile(
+                                        value: selectedIds.contains(c.id),
+                                        onChanged: (_) => toggleCity(c.id),
+                                        controlAffinity:
+                                            ListTileControlAffinity.leading,
+                                        dense: true,
+                                        title: Text(c.city),
+                                        subtitle: c.region.trim().isEmpty
+                                            ? null
+                                            : Text(c.region),
+                                      ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -693,6 +906,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (!mounted) return;
     setState(() => _authWorking = true);
     try {
+      if (!GoogleSignIn.instance.supportsAuthenticate()) {
+        _snack('Google sign-in is not supported on this device.');
+        return;
+      }
       await _analytics.logEvent(
         name: 'login_start',
         parameters: {'provider': 'google'},
@@ -700,6 +917,11 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       await _googleInit;
       final googleUser = await GoogleSignIn.instance.authenticate();
       final auth = googleUser.authentication;
+      if (auth.idToken == null || auth.idToken!.trim().isEmpty) {
+        throw Exception(
+          'Google sign-in did not return an ID token. Check iOS Google Sign-In configuration.',
+        );
+      }
       final credential = GoogleAuthProvider.credential(
         idToken: auth.idToken,
       );
@@ -708,12 +930,24 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         name: 'login_success',
         parameters: {'provider': 'google'},
       );
+    } on GoogleSignInException catch (e) {
+      await _analytics.logEvent(
+        name: 'login_failure',
+        parameters: {'provider': 'google', 'code': e.code.name},
+      );
+      _snack(_googleErrorMessage(e));
     } on FirebaseAuthException catch (e) {
       await _analytics.logEvent(
         name: 'login_failure',
         parameters: {'provider': 'google', 'code': e.code},
       );
       _snack(_authErrorMessage(e));
+    } catch (e) {
+      await _analytics.logEvent(
+        name: 'login_failure',
+        parameters: {'provider': 'google', 'code': 'unknown'},
+      );
+      _snack('Google sign-in failed. $e');
     } finally {
       if (mounted) setState(() => _authWorking = false);
     }
@@ -723,6 +957,11 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (!mounted) return;
     setState(() => _authWorking = true);
     try {
+      final available = await SignInWithApple.isAvailable();
+      if (!available) {
+        _snack('Apple sign-in is unavailable on this device.');
+        return;
+      }
       await _analytics.logEvent(
         name: 'login_start',
         parameters: {'provider': 'apple'},
@@ -736,8 +975,14 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         ],
         nonce: nonce,
       );
+      final identityToken = appleCredential.identityToken;
+      if (identityToken == null || identityToken.trim().isEmpty) {
+        throw Exception(
+          'Apple sign-in did not return identity token. Sign into iCloud on the simulator/device and try again.',
+        );
+      }
       final oauth = OAuthProvider("apple.com").credential(
-        idToken: appleCredential.identityToken,
+        idToken: identityToken,
         accessToken: appleCredential.authorizationCode,
         rawNonce: rawNonce,
       );
@@ -758,7 +1003,13 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         name: 'login_failure',
         parameters: {'provider': 'apple', 'code': e.code.name},
       );
-      _snack('Apple sign-in failed.');
+      _snack('Apple sign-in failed: ${e.code.name}.');
+    } catch (e) {
+      await _analytics.logEvent(
+        name: 'login_failure',
+        parameters: {'provider': 'apple', 'code': 'unknown'},
+      );
+      _snack('Apple sign-in failed. $e');
     } finally {
       if (mounted) setState(() => _authWorking = false);
     }
@@ -785,6 +1036,35 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   }
 
   Widget _buildAuthGate() {
+    final user = FirebaseAuth.instance.currentUser;
+    final providerId = user?.providerData.isNotEmpty == true
+        ? user!.providerData.first.providerId
+        : null;
+    final googleSelected =
+        _authUnlocked && !_guestMode && providerId == 'google.com';
+    final appleSelected =
+        _authUnlocked && !_guestMode && providerId == 'apple.com';
+    final guestSelected = _authUnlocked && _guestMode;
+
+    Widget googleBadge() => Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE3E6EB)),
+          ),
+          alignment: Alignment.center,
+          child: const Text(
+            'G',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF4285F4),
+            ),
+          ),
+        );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -792,74 +1072,105 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           'Continue to promote',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        if (_authUnlocked && _authLabel != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      TrText(
-                        'Signed in as',
-                        style:
-                            TextStyle(color: Colors.grey.shade700, fontSize: 12),
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          _authLabel!,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (!_guestMode)
-                  TextButton(
-                    onPressed: _authWorking ? null : _signOut,
-                    child: const TrText('Sign out'),
-                  ),
-              ],
-            ),
+        const SizedBox(height: 4),
+        TrText(
+          _authUnlocked
+              ? 'You can now edit and submit your listing.'
+              : 'Choose a login option to unlock the form.',
+          style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+        if (_authWorking)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: LinearProgressIndicator(minHeight: 2),
           ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
+        Row(
           children: [
-            ElevatedButton.icon(
-              onPressed: _authWorking ? null : _signInWithGoogle,
-              icon: const Icon(Icons.login),
-              label: const TrText('Continue with Google'),
-            ),
-            if (Platform.isIOS)
-              ElevatedButton.icon(
-                onPressed: _authWorking ? null : _signInWithApple,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
-                ),
-                icon: const Icon(Icons.apple),
-                label: const TrText('Continue with Apple'),
+            Expanded(
+              child: _AuthChoiceButton(
+                label: 'Google',
+                leading: googleBadge(),
+                onTap: _authWorking ? null : _signInWithGoogle,
+                selected: googleSelected,
+                accent: const Color(0xFF4285F4),
               ),
-            OutlinedButton.icon(
-              onPressed: _authWorking ? null : _continueAsGuest,
-              icon: const Icon(Icons.person_outline),
-              label: const TrText('Continue as guest'),
+            ),
+            if (Platform.isIOS) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _AuthChoiceButton(
+                  label: 'Apple',
+                  leading: const Icon(
+                    Icons.apple,
+                    size: 20,
+                    color: Color(0xFF1F1F1F),
+                  ),
+                  onTap: _authWorking ? null : _signInWithApple,
+                  selected: appleSelected,
+                  accent: const Color(0xFF1F1F1F),
+                ),
+              ),
+            ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: _AuthChoiceButton(
+                label: 'Guest',
+                leading: const Icon(
+                  Icons.person_outline_rounded,
+                  size: 19,
+                  color: Color(0xFF00695C),
+                ),
+                onTap: _authWorking ? null : _continueAsGuest,
+                selected: guestSelected,
+                accent: const Color(0xFF009688),
+              ),
             ),
           ],
         ),
-        if (!_authUnlocked)
+        if (_authUnlocked && _authLabel != null)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: TrText(
-              'Sign in to continue.',
-              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+            padding: const EdgeInsets.only(top: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFB7E2BC)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.verified_user_rounded,
+                    size: 16,
+                    color: Color(0xFF2E7D32),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _guestMode
+                          ? 'Guest mode active'
+                          : 'Signed in as $_authLabel',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF1B5E20),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (!_guestMode)
+                    TextButton(
+                      onPressed: _authWorking ? null : _signOut,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 0),
+                        minimumSize: const Size(0, 28),
+                      ),
+                      child: const TrText('Sign out'),
+                    ),
+                ],
+              ),
             ),
           ),
       ],
@@ -870,8 +1181,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   Widget build(BuildContext context) {
     _log('BUILD: saving=$_saving promoting=$_promoting');
 
-    final List<AppCategory> categories =
-        ref.watch(resolvedCategoriesProvider);
+    final List<AppCategory> categories = ref.watch(resolvedCategoriesProvider);
     final AppCategory? selected = ref.watch(selectedCategoryProvider);
     final selectedResolved = selected == null
         ? null
@@ -991,27 +1301,60 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       const SizedBox(height: 8),
       _buildPhotoPreview(),
       const SizedBox(height: 12),
-      TextFormField(
-        controller: _photoUrlsCtrl,
-        decoration: const InputDecoration(
-          label: TrText('Photo URLs'),
-          helper: TrText('Paste one or more image links, separated by commas'),
-          border: OutlineInputBorder(),
-        ),
-        keyboardType: TextInputType.url,
-        maxLines: 2,
-      ),
-      const SizedBox(height: 12),
       sectionTitle('Contact'),
       TextFormField(
-        controller: _phoneCtrl,
+        controller: _phone1Ctrl,
         decoration: const InputDecoration(
-          label: TrText('Phone (optional)'),
+          label: TrText('Phone 1 (optional)'),
+          helper: TrText('Include country code (e.g., +1 202 555 0123)'),
           border: OutlineInputBorder(),
         ),
         keyboardType: TextInputType.phone,
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 4),
+      Wrap(
+        spacing: 12,
+        runSpacing: 0,
+        children: [
+          _CompactCheck(
+            value: _phone1HasWhatsApp,
+            onChanged: (v) => setState(() => _phone1HasWhatsApp = v),
+            label: 'WhatsApp',
+          ),
+          _CompactCheck(
+            value: _phone1HasTelegram,
+            onChanged: (v) => setState(() => _phone1HasTelegram = v),
+            label: 'Telegram',
+          ),
+        ],
+      ),
+      const SizedBox(height: 10),
+      TextFormField(
+        controller: _phone2Ctrl,
+        decoration: const InputDecoration(
+          label: TrText('Phone 2 (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.phone,
+      ),
+      const SizedBox(height: 4),
+      Wrap(
+        spacing: 12,
+        runSpacing: 0,
+        children: [
+          _CompactCheck(
+            value: _phone2HasWhatsApp,
+            onChanged: (v) => setState(() => _phone2HasWhatsApp = v),
+            label: 'WhatsApp',
+          ),
+          _CompactCheck(
+            value: _phone2HasTelegram,
+            onChanged: (v) => setState(() => _phone2HasTelegram = v),
+            label: 'Telegram',
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
       TextFormField(
         controller: _emailCtrl,
         decoration: const InputDecoration(
@@ -1019,16 +1362,6 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           border: OutlineInputBorder(),
         ),
         keyboardType: TextInputType.emailAddress,
-      ),
-      const SizedBox(height: 12),
-      TextFormField(
-        controller: _whatsappCtrl,
-        decoration: const InputDecoration(
-          label: TrText('WhatsApp (optional)'),
-          helper: TrText('Include country code (e.g., +1 202 555 0123)'),
-          border: OutlineInputBorder(),
-        ),
-        keyboardType: TextInputType.phone,
       ),
       const SizedBox(height: 12),
       sectionTitle('Location'),
@@ -1043,7 +1376,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       TextFormField(
         controller: _neighborhoodCtrl,
         decoration: const InputDecoration(
-          label: TrText('Neighborhood / Area'),
+          label: TrText('Neighborhood / Area (optional)'),
           border: OutlineInputBorder(),
         ),
       ),
@@ -1051,76 +1384,42 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       OutlinedButton.icon(
         onPressed: _chooseCities,
         icon: const Icon(Icons.location_city),
-        label: const TrText('Pick from 50 cities'),
-      ),
-      if (_selectedCities.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: _selectedCities
-                .map(
-                  (c) => Chip(
-                    label: TrText(c.label),
-                    onDeleted: () {
-                      setState(() {
-                        _selectedCities =
-                            _selectedCities.where((e) => e.id != c.id).toList();
-                        _syncCityFieldsFromSelection();
-                      });
-                    },
-                  ),
-                )
-                .toList(),
-          ),
+        label: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _selectedCities.isEmpty
+                  ? translator.tr('Pick from 50 cities')
+                  : (() {
+                      final names = _selectedCities.map((c) => c.city).toList();
+                      if (names.length <= 2) return names.join(', ');
+                      return '${names.take(2).join(', ')} +${names.length - 2}';
+                    })(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              _selectedCities.isEmpty
+                  ? translator.tr('Select one or more (multi-select)')
+                  : translator.tr('Add more'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
-      if (_selectedCities.length > 1)
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: TrText(
-            'Multiple cities selected. City/State/Country fields are optional.',
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-          ),
-        ),
-      const SizedBox(height: 12),
-      TextFormField(
-        controller: _cityCtrl,
-        decoration: const InputDecoration(
-          label: TrText('City (where it should appear)'),
-          border: OutlineInputBorder(),
-        ),
-      ),
-      const SizedBox(height: 12),
-      TextFormField(
-        controller: _stateCtrl,
-        decoration: const InputDecoration(
-          label: TrText('State / Region'),
-          border: OutlineInputBorder(),
-        ),
-      ),
-      const SizedBox(height: 12),
-      TextFormField(
-        controller: _countryCtrl,
-        decoration: const InputDecoration(
-          label: TrText('Country'),
-          border: OutlineInputBorder(),
-        ),
-      ),
-      const SizedBox(height: 12),
-      TextFormField(
-        controller: _mapLinkCtrl,
-        decoration: const InputDecoration(
-          label: TrText('Google Maps link (optional)'),
-          border: OutlineInputBorder(),
-        ),
-        keyboardType: TextInputType.url,
       ),
       const SizedBox(height: 12),
       sectionTitle('Online Links'),
       TextFormField(
         controller: _websiteCtrl,
         decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.public),
           label: TrText('Website (optional)'),
           border: OutlineInputBorder(),
         ),
@@ -1130,6 +1429,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       TextFormField(
         controller: _instagramCtrl,
         decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.camera_alt_outlined),
           label: TrText('Instagram (optional)'),
           border: OutlineInputBorder(),
         ),
@@ -1139,6 +1439,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       TextFormField(
         controller: _facebookCtrl,
         decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.facebook),
           label: TrText('Facebook (optional)'),
           border: OutlineInputBorder(),
         ),
@@ -1148,6 +1449,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       TextFormField(
         controller: _youtubeCtrl,
         decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.ondemand_video_outlined),
           label: TrText('YouTube link (optional)'),
           border: OutlineInputBorder(),
         ),
@@ -1157,7 +1459,18 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       TextFormField(
         controller: _tiktokCtrl,
         decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.music_note_outlined),
           label: TrText('TikTok link (optional)'),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.url,
+      ),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _twitterCtrl,
+        decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.alternate_email),
+          label: TrText('Twitter (optional)'),
           border: OutlineInputBorder(),
         ),
         keyboardType: TextInputType.url,
@@ -1212,6 +1525,104 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: formFields,
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactCheck extends StatelessWidget {
+  const _CompactCheck({
+    required this.value,
+    required this.onChanged,
+    required this.label,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => onChanged(!value),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Checkbox(
+            value: value,
+            onChanged: (v) => onChanged(v ?? false),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+          TrText(label),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthChoiceButton extends StatelessWidget {
+  const _AuthChoiceButton({
+    required this.label,
+    required this.leading,
+    required this.onTap,
+    required this.selected,
+    required this.accent,
+  });
+
+  final String label;
+  final Widget leading;
+  final VoidCallback? onTap;
+  final bool selected;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(12);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: borderRadius,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            color: selected ? accent.withValues(alpha: 0.14) : Colors.white,
+            border: Border.all(
+              color: selected ? accent : const Color(0xFFD9DEE6),
+              width: selected ? 1.4 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              leading,
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: selected ? accent : const Color(0xFF263238),
                 ),
               ),
             ],

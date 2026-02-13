@@ -14,7 +14,30 @@ Future<void> _pumpFor(WidgetTester tester, Duration duration) async {
   }
 }
 
-Future<void> _waitForPlacesList(WidgetTester tester,
+Future<void> _waitForHomeReady(WidgetTester tester,
+    {Duration timeout = const Duration(seconds: 60)}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(const Duration(milliseconds: 250));
+    // Home is ready once at least one category is visible.
+    final restaurants = find.text('Restaurants');
+    if (restaurants.evaluate().isNotEmpty) return;
+  }
+}
+
+Future<void> _waitForText(
+  WidgetTester tester,
+  String text, {
+  Duration timeout = const Duration(seconds: 30),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(const Duration(milliseconds: 250));
+    if (find.text(text).evaluate().isNotEmpty) return;
+  }
+}
+
+Future<bool> _waitForPlacesList(WidgetTester tester,
     {Duration timeout = const Duration(seconds: 300)}) async {
   final end = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(end)) {
@@ -30,8 +53,9 @@ Future<void> _waitForPlacesList(WidgetTester tester,
       of: find.byType(PlacesV2ListScreen),
       matching: find.byType(ListTile),
     );
-    if (listTiles.evaluate().isNotEmpty) return;
+    if (listTiles.evaluate().isNotEmpty) return true;
   }
+  return false;
 }
 
 void main() {
@@ -41,7 +65,7 @@ void main() {
   testWidgets('core flows screenshots', (tester) async {
     app.main();
     await tester.pump();
-    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForHomeReady(tester);
 
     if (Platform.isAndroid) {
       await binding.convertFlutterSurfaceToImage();
@@ -51,19 +75,24 @@ void main() {
     await binding.takeScreenshot('home');
 
     // Tap a category to open Places list (if present)
-    final restaurants = find.text('Restaurants');
+    final restaurants = find.text('Restaurants').hitTestable();
     if (restaurants.evaluate().isNotEmpty) {
       await tester.tap(restaurants.first);
       await tester.pump();
-      await _waitForPlacesList(tester);
-      await binding.takeScreenshot('places_list');
+      final loaded = await _waitForPlacesList(tester);
+      if (loaded) {
+        await binding.takeScreenshot('places_list');
+      }
       await tester.pageBack();
       await tester.pump();
       await _pumpFor(tester, const Duration(seconds: 1));
     }
 
+    // Ensure we are back on the home screen (helps large-screen iPad layouts).
+    await _waitForText(tester, 'All Habesha');
+
     // Open Add Listing card
-    final addListing = find.textContaining('Add your listing');
+    final addListing = find.textContaining('Add your listing').hitTestable();
     if (addListing.evaluate().isNotEmpty) {
       final scrollable = find.byType(Scrollable);
       if (scrollable.evaluate().isNotEmpty) {

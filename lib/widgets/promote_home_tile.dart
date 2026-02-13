@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/env.dart';
 import '../services/payments_api.dart';
+import '../state/payment_type_provider.dart';
 import '../state/sponsored_providers.dart';
 import '../state/stripe_mode_provider.dart';
 import '../widgets/tr_text.dart';
@@ -66,19 +68,27 @@ class _PromoteHomeTileState extends ConsumerState<PromoteHomeTile>
     setState(() => _busy = true);
 
     try {
-      final api = PaymentsApi(baseUrl: widget.paymentsBaseUrl);
       final stripeMode = ref.read(stripeModeProvider);
+      final paymentType = ref.read(paymentTypeProvider);
+      final checkoutBaseUrl = paymentType == PaymentType.subscription
+          ? subscriptionPaymentsBaseUrl
+          : widget.paymentsBaseUrl;
+      final api = PaymentsApi(baseUrl: checkoutBaseUrl);
 
-      // Your existing method name may be different.
-      // This must call your backend which returns a Stripe Checkout URL.
-      final checkoutUrl = await api.createCheckoutSession(
-        entityId: widget.entityId,
-        promotionTier: _promotionTier,
-        stripeMode: stripeMode.name,
-      );
+      final checkoutUrl = paymentType == PaymentType.subscription
+          ? await api.createSubscriptionCheckoutSession(
+              entityId: widget.entityId,
+              promotionTier: _promotionTier,
+              stripeMode: stripeMode.name,
+              intervalDays: 7,
+            )
+          : await api.createCheckoutSession(
+              entityId: widget.entityId,
+              promotionTier: _promotionTier,
+              stripeMode: stripeMode.name,
+            );
 
-      final uri =
-          checkoutUrl is Uri ? checkoutUrl : Uri.parse(checkoutUrl.toString());
+      final uri = checkoutUrl;
 
       final ok = await launchUrl(
         uri,

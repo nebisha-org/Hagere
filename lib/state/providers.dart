@@ -175,20 +175,17 @@ class LocationController {
     await prefs.setDouble('last_location_lon', lon);
   }
 
-  Future<LocationData?> _loadFallbackLocation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lat = prefs.getDouble('last_location_lat');
-    final lon = prefs.getDouble('last_location_lon');
-    if (lat != null && lon != null) {
-      return _locationFromLatLon(lat, lon);
-    }
-
-    if (kDebugMode) {
-      return _locationFromLatLon(_debugFallbackLat(), _debugFallbackLon());
-    }
-
-    return null;
+Future<LocationData?> _loadFallbackLocation() async {
+  final prefs = await SharedPreferences.getInstance();
+  final lat = prefs.getDouble('last_location_lat');
+  final lon = prefs.getDouble('last_location_lon');
+  if (lat != null && lon != null) {
+    return _locationFromLatLon(lat, lon);
   }
+
+  // Release-safe fallback: never leave the app blocked on a location spinner.
+  return _locationFromLatLon(_debugFallbackLat(), _debugFallbackLon());
+}
 
   Future<void> _updateFromLiveLocation({
     Duration timeout = const Duration(seconds: 20),
@@ -204,7 +201,12 @@ class LocationController {
   }
 
   Future<void> ensureLocationReady() async {
-    bool serviceEnabled = await _location.serviceEnabled();
+    bool serviceEnabled = false;
+    try {
+      serviceEnabled = await _location.serviceEnabled();
+    } catch (_) {
+      serviceEnabled = false;
+    }
     if (!serviceEnabled) {
       try {
         serviceEnabled = await _location
@@ -213,12 +215,25 @@ class LocationController {
       } catch (_) {
         // iOS may not allow programmatic service prompts.
       }
-      if (!serviceEnabled && !Platform.isIOS) {
-        throw Exception('Location service is disabled');
+      if (!serviceEnabled) {
+        final fallback = await _loadFallbackLocation();
+        if (fallback != null) {
+          ref.read(userLocationProvider.notifier).state = fallback;
+          Future(() => _updateFromLiveLocation());
+          return;
+        }
+        if (!Platform.isIOS) {
+          throw Exception('Location service is disabled');
+        }
       }
     }
 
-    PermissionStatus permission = await _location.hasPermission();
+    PermissionStatus permission = PermissionStatus.denied;
+    try {
+      permission = await _location.hasPermission();
+    } catch (_) {
+      permission = PermissionStatus.denied;
+    }
     if (permission == PermissionStatus.denied) {
       try {
         permission = await _location
@@ -230,13 +245,11 @@ class LocationController {
     }
 
     if (permission == PermissionStatus.deniedForever) {
-      if (kDebugMode) {
-        final fallback = await _loadFallbackLocation();
-        if (fallback != null) {
-          ref.read(userLocationProvider.notifier).state = fallback;
-          Future(() => _updateFromLiveLocation());
-          return;
-        }
+      final fallback = await _loadFallbackLocation();
+      if (fallback != null) {
+        ref.read(userLocationProvider.notifier).state = fallback;
+        Future(() => _updateFromLiveLocation());
+        return;
       }
       throw Exception(
         'Location permission permanently denied. Enable it in iOS Settings > Privacy > Location Services.',
@@ -245,13 +258,11 @@ class LocationController {
 
     if (permission != PermissionStatus.granted &&
         permission != PermissionStatus.grantedLimited) {
-      if (kDebugMode) {
-        final fallback = await _loadFallbackLocation();
-        if (fallback != null) {
-          ref.read(userLocationProvider.notifier).state = fallback;
-          Future(() => _updateFromLiveLocation());
-          return;
-        }
+      final fallback = await _loadFallbackLocation();
+      if (fallback != null) {
+        ref.read(userLocationProvider.notifier).state = fallback;
+        Future(() => _updateFromLiveLocation());
+        return;
       }
       throw Exception('Location permission not granted: $permission');
     }

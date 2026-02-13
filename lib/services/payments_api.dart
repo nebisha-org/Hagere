@@ -14,14 +14,48 @@ class PaymentsApi {
     String? categoryId,
     String? stripeMode, // "live" or "test"
   }) async {
-    final uri = Uri.parse('$baseUrl/payments/checkout-session');
+    return _createSession(
+      endpointPath: '/payments/checkout-session',
+      entityId: entityId,
+      promotionTier: promotionTier,
+      categoryId: categoryId,
+      stripeMode: stripeMode,
+    );
+  }
 
+  Future<Uri> createSubscriptionCheckoutSession({
+    required String entityId,
+    required String promotionTier,
+    String? categoryId,
+    String? stripeMode,
+    int intervalDays = 7,
+  }) async {
+    return _createSession(
+      endpointPath: '/payments/subscription-checkout-session',
+      entityId: entityId,
+      promotionTier: promotionTier,
+      categoryId: categoryId,
+      stripeMode: stripeMode,
+      intervalDays: intervalDays,
+    );
+  }
+
+  Future<Uri> _createSession({
+    required String endpointPath,
+    required String entityId,
+    required String promotionTier,
+    String? categoryId,
+    String? stripeMode,
+    int? intervalDays,
+  }) async {
+    final uri = Uri.parse('$baseUrl$endpointPath');
     final body = <String, dynamic>{
       'entityId': entityId,
       'promotionTier': promotionTier,
       if (categoryId != null) 'categoryId': categoryId,
       if (stripeMode != null && stripeMode.trim().isNotEmpty)
         'stripeMode': stripeMode,
+      if (intervalDays != null) 'intervalDays': intervalDays,
     };
 
     debugPrint('CHECKOUT POST => $uri');
@@ -37,7 +71,8 @@ class PaymentsApi {
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception(
-          'Checkout session failed (${res.statusCode}): ${res.body}');
+        'Checkout session failed (${res.statusCode}): ${res.body}',
+      );
     }
 
     final decoded = jsonDecode(res.body);
@@ -52,7 +87,6 @@ class PaymentsApi {
     return Uri.parse(url);
   }
 }
-
 
 // import 'dart:convert';
 // import 'package:flutter/foundation.dart';
@@ -105,8 +139,6 @@ class PaymentsApi {
 //   }
 // }
 
-
-
 // import 'dart:convert';
 // import 'package:http/http.dart' as http;
 // import 'package:flutter/foundation.dart'; // <-- add this
@@ -150,7 +182,7 @@ class PaymentsApi {
 
 //   throw Exception('Checkout session failed');
 // }
-  
+
 //   else {
 
 //     final data = jsonDecode(res.body) as Map<String, dynamic>;

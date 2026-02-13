@@ -93,15 +93,15 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
         remoteTiles.add(
           PromoTileData(
             title: item.title.isEmpty ? 'Community Highlight' : item.title,
-            subtitle: item.subtitle.isEmpty
-                ? 'Tap to learn more.'
-                : item.subtitle,
+            subtitle:
+                item.subtitle.isEmpty ? 'Tap to learn more.' : item.subtitle,
             icon: Icons.campaign,
             gradient: gradient,
             imageUrl: item.imageUrl.isEmpty ? null : item.imageUrl,
             ctaLabel: item.ctaLabel.isEmpty ? 'Learn more' : item.ctaLabel,
-            ctaUrl:
-                hasEntityTap ? null : (item.ctaUrl.isEmpty ? null : item.ctaUrl),
+            ctaUrl: hasEntityTap
+                ? null
+                : (item.ctaUrl.isEmpty ? null : item.ctaUrl),
             onTap: hasEntityTap ? () => widget.onEntityTap!(item) : null,
             entityType: 'carousel',
             entityId: item.itemId,
@@ -153,7 +153,8 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
   void initState() {
     super.initState();
     _syncTiles();
-    _controller = PageController(viewportFraction: 0.86, initialPage: _basePage);
+    _controller =
+        PageController(viewportFraction: 0.86, initialPage: _basePage);
     if (!_disableAutoscroll) {
       _timer = Timer.periodic(const Duration(seconds: 5), (_) {
         if (!_controller.hasClients) return;
@@ -218,6 +219,7 @@ class _PromoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasImage = data.imageUrl != null && data.imageUrl!.isNotEmpty;
     final canEdit = data.entityType != null && data.entityId != null;
+    final isAddListingTile = data.tileKey == const Key('add_listing_tile');
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: Material(
@@ -226,15 +228,27 @@ class _PromoTile extends StatelessWidget {
           key: data.tileKey,
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
-            if (data.onTap != null) {
-              data.onTap!();
+            // Keep the "Add your listing" tile as a 1-tap action.
+            if (isAddListingTile) {
+              if (data.onTap != null) {
+                data.onTap!();
+                return;
+              }
+              final rawUrl = data.ctaUrl;
+              if (rawUrl == null || rawUrl.isEmpty) return;
+              final uri = Uri.tryParse(rawUrl);
+              if (uri == null) return;
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
               return;
             }
-            final rawUrl = data.ctaUrl;
-            if (rawUrl == null || rawUrl.isEmpty) return;
-            final uri = Uri.tryParse(rawUrl);
-            if (uri == null) return;
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+            await showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              useSafeArea: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => _PromoDetailSheet(data: data),
+            );
           },
           child: Ink(
             decoration: BoxDecoration(
@@ -278,9 +292,7 @@ class _PromoTile extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: data.gradient
-                              .map((c) => hasImage
-                                  ? c.withOpacity(0.6)
-                                  : c)
+                              .map((c) => hasImage ? c.withOpacity(0.6) : c)
                               .toList(),
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -308,6 +320,8 @@ class _PromoTile extends StatelessWidget {
                                       entityType: data.entityType!,
                                       entityId: data.entityId!,
                                       fieldKey: 'title',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -316,19 +330,23 @@ class _PromoTile extends StatelessWidget {
                                     )
                                   : TrText(
                                       data.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
                                     ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               canEdit
                                   ? QcEditableText(
                                       data.subtitle,
                                       entityType: data.entityType!,
                                       entityId: data.entityId!,
                                       fieldKey: 'subtitle',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: Colors.white70,
                                         fontSize: 12,
@@ -336,6 +354,8 @@ class _PromoTile extends StatelessWidget {
                                     )
                                   : TrText(
                                       data.subtitle,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: Colors.white70,
                                         fontSize: 12,
@@ -344,11 +364,11 @@ class _PromoTile extends StatelessWidget {
                               if (data.ctaLabel != null &&
                                   data.ctaLabel!.isNotEmpty)
                                 Padding(
-                                  padding: const EdgeInsets.only(top: 10),
+                                  padding: const EdgeInsets.only(top: 6),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
-                                      vertical: 4,
+                                      vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.2),
@@ -360,6 +380,8 @@ class _PromoTile extends StatelessWidget {
                                             entityType: data.entityType!,
                                             entityId: data.entityId!,
                                             fieldKey: 'cta_label',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 11,
@@ -367,6 +389,8 @@ class _PromoTile extends StatelessWidget {
                                           )
                                         : TrText(
                                             data.ctaLabel!,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 11,
@@ -387,6 +411,203 @@ class _PromoTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PromoDetailSheet extends StatelessWidget {
+  const _PromoDetailSheet({required this.data});
+
+  final PromoTileData data;
+  static const bool _disableRemoteImages =
+      bool.fromEnvironment('DISABLE_REMOTE_IMAGES', defaultValue: false);
+
+  Future<void> _runPrimaryAction(BuildContext context) async {
+    final onTap = data.onTap;
+    final rawUrl = (data.ctaUrl ?? '').trim();
+
+    Navigator.of(context).pop(); // close sheet first
+
+    if (onTap != null) {
+      Future.microtask(onTap);
+      return;
+    }
+
+    if (rawUrl.isEmpty) return;
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage =
+        (data.imageUrl ?? '').trim().isNotEmpty && !_disableRemoteImages;
+    final hasPrimary =
+        data.onTap != null || (data.ctaUrl ?? '').trim().isNotEmpty;
+    final primaryLabel = (data.ctaLabel ?? '').trim().isNotEmpty
+        ? data.ctaLabel!.trim()
+        : (data.onTap != null ? 'View details' : 'Open');
+
+    final gradient = LinearGradient(
+      colors: data.gradient,
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.78,
+      minChildSize: 0.55,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: Material(
+            color: Colors.transparent,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: DecoratedBox(
+                decoration: BoxDecoration(gradient: gradient),
+                child: Stack(
+                  children: [
+                    if (hasImage)
+                      Positioned.fill(
+                        child: Image.network(
+                          data.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color:
+                              Colors.black.withOpacity(hasImage ? 0.35 : 0.15),
+                        ),
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.35),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                          child: Row(
+                            children: [
+                              const Spacer(),
+                              IconButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                icon: const Icon(Icons.close),
+                                color: Colors.white,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            children: [
+                              Text(
+                                data.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                data.subtitle,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  height: 1.25,
+                                ),
+                              ),
+                              if ((data.ctaUrl ?? '').trim().isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.15),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.link,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          (data.ctaUrl ?? '').trim(),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: hasPrimary
+                                      ? () => _runPrimaryAction(context)
+                                      : null,
+                                  icon: const Icon(Icons.arrow_forward),
+                                  label: TrText(primaryLabel, translate: false),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              OutlinedButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: BorderSide(
+                                    color: Colors.white.withOpacity(0.35),
+                                  ),
+                                ),
+                                child: const TrText('Close', translate: false),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

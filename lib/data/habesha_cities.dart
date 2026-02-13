@@ -13,11 +13,34 @@ class HabeshaCity {
   final String country;
   final String countryCode;
 
+  String get continent =>
+      kCountryCodeToContinent[countryCode.toUpperCase()] ?? 'Other';
+
   String get label {
     if (region.trim().isEmpty) return '$city, $country';
     return '$city, $region, $country';
   }
 }
+
+// Minimal mapping for grouping the curated city list in the picker UI.
+// Keep values stable for UI grouping.
+const Map<String, String> kCountryCodeToContinent = {
+  'US': 'North America',
+  'CA': 'North America',
+  'GB': 'Europe',
+  'SE': 'Europe',
+  'NO': 'Europe',
+  'CH': 'Europe',
+  'DE': 'Europe',
+  'IT': 'Europe',
+  'NL': 'Europe',
+  'IL': 'Asia',
+  'SA': 'Asia',
+  'AE': 'Asia',
+  'QA': 'Asia',
+  'ET': 'Africa',
+  'ER': 'Africa',
+};
 
 const List<HabeshaCity> kHabeshaCities = [
   HabeshaCity(

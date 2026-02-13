@@ -13,6 +13,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+configurations.all {
+    exclude(group = "com.google.android.gms", module = "play-services-ads-identifier")
+}
+
 android {
     ndkVersion = "28.2.13676358"
     namespace = "com.digitalnebi.allhabesha"
@@ -47,8 +51,8 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
         debug {
             // default debug config
