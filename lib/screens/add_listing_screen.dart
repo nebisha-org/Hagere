@@ -30,6 +30,18 @@ enum AddListingOrigin {
   categoryList,
 }
 
+class _UploadedListingImage {
+  const _UploadedListingImage({
+    required this.key,
+    required this.url,
+    required this.contentType,
+  });
+
+  final String key;
+  final String url;
+  final String contentType;
+}
+
 class AddListingScreen extends ConsumerStatefulWidget {
   const AddListingScreen({
     super.key,
@@ -254,7 +266,104 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     }
   }
 
-  Future<String> _createEntity() async {
+  void _refreshEntitiesList() {
+    ref.read(entitiesRefreshProvider.notifier).state++;
+    ref.invalidate(entitiesRawProvider);
+  }
+
+  String _contentTypeForPath(String path) {
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.heic')) return 'image/heic';
+    if (lower.endsWith('.heif')) return 'image/heif';
+    return 'image/jpeg';
+  }
+
+  String _fileNameFromPath(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    if (normalized.isEmpty) return 'upload.jpg';
+    final parts = normalized.split('/');
+    final name = parts.isNotEmpty ? parts.last.trim() : '';
+    if (name.isEmpty) return 'upload.jpg';
+    return name;
+  }
+
+  Future<_UploadedListingImage> _uploadSingleImage(XFile file) async {
+    final contentType = _contentTypeForPath(file.path);
+    final fileName = _fileNameFromPath(file.path);
+    final presignUri = Uri.parse('$entitiesBaseUrl/uploads/presign');
+    _log('UPLOAD PRESIGN: POST $presignUri ($fileName $contentType)');
+
+    final presignRes = await http
+        .post(
+          presignUri,
+          headers: const {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: jsonEncode({
+            "fileName": fileName,
+            "contentType": contentType,
+          }),
+        )
+        .timeout(const Duration(seconds: 25));
+
+    _log(
+        'UPLOAD PRESIGN: status=${presignRes.statusCode} body=${presignRes.body}');
+    if (presignRes.statusCode < 200 || presignRes.statusCode >= 300) {
+      throw Exception(
+          'Image upload init failed: ${presignRes.statusCode} ${presignRes.body}');
+    }
+
+    final presignJson = jsonDecode(presignRes.body);
+    final uploadUrl = (presignJson['uploadUrl'] ?? '').toString().trim();
+    final fileKey = (presignJson['fileKey'] ?? '').toString().trim();
+    final publicUrl = (presignJson['publicUrl'] ?? '').toString().trim();
+    if (uploadUrl.isEmpty || fileKey.isEmpty || publicUrl.isEmpty) {
+      throw Exception('Image upload init returned invalid payload');
+    }
+
+    final bytes = await file.readAsBytes();
+    final uploadUri = Uri.parse(uploadUrl);
+    final uploadRes = await http
+        .put(
+          uploadUri,
+          headers: {
+            "Content-Type": contentType,
+          },
+          body: bytes,
+        )
+        .timeout(const Duration(seconds: 45));
+
+    _log('UPLOAD PUT: status=${uploadRes.statusCode} key=$fileKey');
+    if (uploadRes.statusCode < 200 || uploadRes.statusCode >= 300) {
+      throw Exception(
+          'Image upload failed: ${uploadRes.statusCode} ${uploadRes.body}');
+    }
+
+    return _UploadedListingImage(
+      key: fileKey,
+      url: publicUrl,
+      contentType: contentType,
+    );
+  }
+
+  Future<List<_UploadedListingImage>> _uploadPickedImages() async {
+    if (_pickedImages.isEmpty) return const [];
+
+    _log('UPLOAD IMAGES: count=${_pickedImages.length}');
+    final uploaded = <_UploadedListingImage>[];
+    for (final file in _pickedImages) {
+      uploaded.add(await _uploadSingleImage(file));
+    }
+    _log('UPLOAD IMAGES: done=${uploaded.length}');
+    return uploaded;
+  }
+
+  Future<String> _createEntity({
+    List<_UploadedListingImage> uploadedImages = const [],
+  }) async {
     final category = ref.read(selectedCategoryProvider);
     if (category == null) {
       throw Exception('Category required');
@@ -308,6 +417,16 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     final tags = splitList(_tagsCtrl.text);
     if (tags.isNotEmpty) body["tags"] = tags;
+    if (uploadedImages.isNotEmpty) {
+      final urls = uploadedImages.map((e) => e.url).toList();
+      final keys = uploadedImages.map((e) => e.key).toList();
+      final contentTypes = uploadedImages.map((e) => e.contentType).toList();
+      body["images"] = urls;
+      body["imageKeys"] = keys;
+      body["imageContentTypes"] = contentTypes;
+      body["photo"] = urls.first;
+      body["image"] = urls.first;
+    }
     if (_selectedCities.isNotEmpty) {
       body["cityIds"] = _selectedCities.map((c) => c.id).toList();
       body["cities"] = _selectedCities.map((c) => c.city).toList();
@@ -338,8 +457,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         body["cityId"] = only.id;
         body["city"] = only.city;
         if (only.region.trim().isNotEmpty) body["state"] = only.region.trim();
-        if (only.country.trim().isNotEmpty)
+        if (only.country.trim().isNotEmpty) {
           body["country"] = only.country.trim();
+        }
         if (only.countryCode.trim().isNotEmpty) {
           body["countryCode"] = only.countryCode;
         }
@@ -465,7 +585,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       _log('CHECKOUT: skip launch (SKIP_STRIPE_LAUNCH)');
       ref.invalidate(homeSponsoredProvider);
       ref.invalidate(carouselItemsProvider);
-      ref.invalidate(entitiesRawProvider);
+      _refreshEntitiesList();
       debugPrint("CHECKOUT URL => $checkoutUrl");
       return;
     }
@@ -478,7 +598,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     _log('CHECKOUT: launchUrl ok=$ok');
     ref.invalidate(homeSponsoredProvider);
     ref.invalidate(carouselItemsProvider);
-    ref.invalidate(entitiesRawProvider);
+    _refreshEntitiesList();
     debugPrint("CHECKOUT URL => $checkoutUrl");
 
     if (!ok) {
@@ -498,13 +618,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       label: 'SAVE FLOW',
       setLoading: (on) => setState(() => _saving = on),
       fn: () async {
-        await _createEntity();
+        final uploadedImages = await _uploadPickedImages();
+        await _createEntity(uploadedImages: uploadedImages);
         await _analytics.logEvent(
           name: 'listing_save',
           // Firebase Analytics only accepts String/num values.
           parameters: {'promote': 0},
         );
         ref.invalidate(carouselItemsProvider);
+        _refreshEntitiesList();
         if (!mounted) return;
         Navigator.of(context).pop(true);
       },
@@ -523,13 +645,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       label: 'SAVE&PROMOTE FLOW',
       setLoading: (on) => setState(() => _promoting = on),
       fn: () async {
-        final entityId = await _createEntity();
+        final uploadedImages = await _uploadPickedImages();
+        final entityId = await _createEntity(uploadedImages: uploadedImages);
         await _analytics.logEvent(
           name: 'listing_save',
           // Firebase Analytics only accepts String/num values.
           parameters: {'promote': 1},
         );
         ref.invalidate(carouselItemsProvider);
+        _refreshEntitiesList();
         await _analytics.logEvent(name: 'promotion_checkout_start');
         await _startCheckout(entityId: entityId);
       },
@@ -1183,6 +1307,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     final List<AppCategory> categories = ref.watch(resolvedCategoriesProvider);
     final AppCategory? selected = ref.watch(selectedCategoryProvider);
+    final paymentType = ref.watch(paymentTypeProvider);
     final selectedResolved = selected == null
         ? null
         : categories.firstWhere(
@@ -1495,6 +1620,27 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         ),
       ),
       const SizedBox(height: 20),
+      if (widget.origin == AddListingOrigin.categoryList &&
+          paymentType == PaymentType.subscription)
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F5E9),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFB7E2BC)),
+          ),
+          child: const TrText(
+            r'Category promotion subscription: $1.99 per 7 days.',
+            translate: false,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1B5E20),
+            ),
+          ),
+        ),
       ElevatedButton(
         onPressed: (_saving || _promoting) ? null : _onSave,
         child: _saving ? buttonSpinner() : const TrText('Save'),

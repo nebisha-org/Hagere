@@ -11,10 +11,15 @@ class AdminItemsApi {
     required String pk,
     String sk = 'META',
     required String adminKey,
+    required String deletedBy,
   }) async {
     final trimmedKey = adminKey.trim();
     if (trimmedKey.isEmpty) {
       throw Exception('Missing QC admin key (X-Admin-Key)');
+    }
+    final trimmedDeletedBy = deletedBy.trim();
+    if (trimmedDeletedBy.isEmpty) {
+      throw Exception('Missing deleted by name (X-Admin-Name)');
     }
     final trimmedPk = pk.trim();
     if (trimmedPk.isEmpty) {
@@ -37,6 +42,7 @@ class AdminItemsApi {
       headers: {
         'Accept': 'application/json',
         'x-admin-key': trimmedKey,
+        'x-admin-name': trimmedDeletedBy,
       },
     );
 

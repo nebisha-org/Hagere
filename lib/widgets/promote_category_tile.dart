@@ -58,7 +58,7 @@ class _PromoteCategoryTileState extends ConsumerState<PromoteCategoryTile> {
                     TrText('Promote your business here',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     SizedBox(height: 4),
-                    TrText(r'$2.99 · Top of this category for 7 days',
+                    TrText(r'$1.99/week · Top of this category',
                         style: TextStyle(fontSize: 12)),
                   ],
                 ),

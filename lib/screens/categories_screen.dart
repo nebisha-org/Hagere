@@ -199,6 +199,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     if (loc == null || loc.latitude == null || loc.longitude == null) {
       return Scaffold(
         appBar: AppBar(
+          centerTitle: true,
           title: kQcMode
               ? RawGestureDetector(
                   gestures: {
@@ -234,6 +235,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: kQcMode
             ? RawGestureDetector(
                 gestures: {
@@ -626,9 +628,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   value: isSubscription,
                   onChanged: (on) {
                     ref.read(paymentTypeProvider.notifier).setType(
-                          on
-                              ? PaymentType.subscription
-                              : PaymentType.oneTime,
+                          on ? PaymentType.subscription : PaymentType.oneTime,
                         );
                   },
                   title: const TrText('Payment option'),
@@ -709,7 +709,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 final double tabletGridHeight =
                     (gridRows * 68.0) + ((gridRows - 1).clamp(0, 100) * 10.0);
                 final double tabletCarouselHeight =
-                    (constraints.maxHeight * 0.28).clamp(220.0, 320.0).toDouble();
+                    (constraints.maxHeight * 0.28)
+                        .clamp(220.0, 320.0)
+                        .toDouble();
                 final bool hasSponsoredItems = sponsoredAsync.maybeWhen(
                   data: (items) => items.isNotEmpty,
                   orElse: () => false,

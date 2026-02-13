@@ -8,19 +8,96 @@ import '../state/category_providers.dart';
 import '../state/location_name_provider.dart';
 import '../state/translation_provider.dart';
 import '../state/qc_mode.dart';
-import '../state/qc_admin_key_provider.dart';
 import '../state/override_providers.dart';
 import 'add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
 import 'package:agerelige_flutter_client/widgets/promote_category_tile.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
-import 'package:agerelige_flutter_client/widgets/qc_admin_key_dialog.dart';
+
+class _DeleteAuthPromptResult {
+  final String deletedBy;
+  final String password;
+
+  const _DeleteAuthPromptResult({
+    required this.deletedBy,
+    required this.password,
+  });
+}
 
 class EntitiesScreen extends ConsumerWidget {
   const EntitiesScreen({super.key});
   static const showAddListing = false;
   static const showPromote = false;
+
+  Future<_DeleteAuthPromptResult?> _promptDeletePassword(
+    BuildContext context,
+  ) async {
+    final deletedByCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    bool obscure = true;
+    final result = await showDialog<_DeleteAuthPromptResult>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const TrText('Enter delete password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: deletedByCtrl,
+                autofocus: true,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Deleted by',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: obscure,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscure ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () => setState(() => obscure = !obscure),
+                  ),
+                ),
+                onSubmitted: (_) => Navigator.of(ctx).pop(
+                  _DeleteAuthPromptResult(
+                    deletedBy: deletedByCtrl.text.trim(),
+                    password: passwordCtrl.text.trim(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const TrText('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(
+                _DeleteAuthPromptResult(
+                  deletedBy: deletedByCtrl.text.trim(),
+                  password: passwordCtrl.text.trim(),
+                ),
+              ),
+              child: const TrText('Continue'),
+            ),
+          ],
+        ),
+      ),
+    );
+    deletedByCtrl.dispose();
+    passwordCtrl.dispose();
+    return result;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -75,16 +152,21 @@ class EntitiesScreen extends ConsumerWidget {
       if (confirmed != true) return;
       if (!context.mounted) return;
 
-      var adminKey = ref.read(qcAdminApiKeyProvider).trim();
-      if (adminKey.isEmpty) {
-        final entered = await showQcAdminKeyDialog(
-          context: context,
-          initialValue: adminKey,
-        );
-        if (entered == null) return;
+      final deleteAuth = await _promptDeletePassword(context);
+      if (deleteAuth == null) return;
+      if (deleteAuth.deletedBy.trim().isEmpty) {
         if (!context.mounted) return;
-        await ref.read(qcAdminApiKeyProvider.notifier).setKey(entered);
-        adminKey = entered.trim();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: TrText('Deleted by required')),
+        );
+        return;
+      }
+      if (deleteAuth.password.trim().isEmpty) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: TrText('Password required')),
+        );
+        return;
       }
 
       if (!context.mounted) return;
@@ -107,7 +189,12 @@ class EntitiesScreen extends ConsumerWidget {
       );
 
       try {
-        await AdminItemsApi().deleteItem(pk: pk, sk: sk, adminKey: adminKey);
+        await AdminItemsApi().deleteItem(
+          pk: pk,
+          sk: sk,
+          adminKey: deleteAuth.password,
+          deletedBy: deleteAuth.deletedBy,
+        );
         if (context.mounted) {
           Navigator.of(context).pop(); // loading
           ScaffoldMessenger.of(context).showSnackBar(
@@ -281,7 +368,7 @@ class EntitiesScreen extends ConsumerWidget {
                                           ref.invalidate(entitiesRawProvider);
                                         },
                                         icon: const Icon(Icons.refresh),
-                                        label: const TrText('Reload'),
+                                        label: const TrText('Load more'),
                                       ),
                                     ),
                                   );

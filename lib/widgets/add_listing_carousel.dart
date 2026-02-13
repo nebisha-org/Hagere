@@ -149,6 +149,16 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
     }
   }
 
+  void _goToNextSlide() {
+    if (!_controller.hasClients) return;
+    final current = (_controller.page ?? _basePage).round();
+    _controller.animateToPage(
+      current + 1,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -201,7 +211,10 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
         reverse: false,
         itemBuilder: (context, index) {
           final tile = _tiles[index % _tiles.length];
-          return _PromoTile(data: tile);
+          return _PromoTile(
+            data: tile,
+            onNextSlide: _goToNextSlide,
+          );
         },
       ),
     );
@@ -209,9 +222,13 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
 }
 
 class _PromoTile extends StatelessWidget {
-  const _PromoTile({required this.data});
+  const _PromoTile({
+    required this.data,
+    this.onNextSlide,
+  });
 
   final PromoTileData data;
+  final VoidCallback? onNextSlide;
   static const bool _disableRemoteImages =
       bool.fromEnvironment('DISABLE_REMOTE_IMAGES', defaultValue: false);
 
@@ -401,7 +418,20 @@ class _PromoTile extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const Icon(Icons.chevron_right, color: Colors.white70),
+                        IconButton(
+                          onPressed: onNextSlide,
+                          tooltip: 'Next',
+                          icon: const Icon(
+                            Icons.chevron_right,
+                            color: Colors.white70,
+                          ),
+                          splashRadius: 18,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
                       ],
                     ),
                   ),

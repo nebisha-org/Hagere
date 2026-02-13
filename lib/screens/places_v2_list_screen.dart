@@ -6,13 +6,21 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/admin_items_api.dart';
 import '../state/providers.dart';
-import '../state/qc_admin_key_provider.dart';
 import '../state/qc_mode.dart';
-import '../widgets/qc_admin_key_dialog.dart';
 import 'add_listing_screen.dart';
 import 'place_detail_screen.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
+
+class _DeleteAuthPromptResult {
+  final String deletedBy;
+  final String password;
+
+  const _DeleteAuthPromptResult({
+    required this.deletedBy,
+    required this.password,
+  });
+}
 
 class Entity {
   final String name;
@@ -54,6 +62,9 @@ class PlacesV2ListScreen extends ConsumerStatefulWidget {
 }
 
 class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
+  final TextEditingController _filterCtrl = TextEditingController();
+  String _filterQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +75,95 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
         // Surface errors via the Enable Location button flow.
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _filterCtrl.dispose();
+    super.dispose();
+  }
+
+  bool _matchesFilter(Map<String, dynamic> raw) {
+    final q = _filterQuery.trim().toLowerCase();
+    if (q.isEmpty) return true;
+
+    final e = Entity.fromJson(raw);
+    final categoryId =
+        (raw['categoryId'] ?? raw['category'] ?? '').toString().toLowerCase();
+    final haystack = [
+      e.name.toLowerCase(),
+      e.address.toLowerCase(),
+      e.phone.toLowerCase(),
+      categoryId,
+    ].join(' ');
+    return haystack.contains(q);
+  }
+
+  Future<_DeleteAuthPromptResult?> _promptDeletePassword() async {
+    final deletedByCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    bool obscure = true;
+    final result = await showDialog<_DeleteAuthPromptResult>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const TrText('Enter delete password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: deletedByCtrl,
+                autofocus: true,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Deleted by',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: obscure,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscure ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () => setState(() => obscure = !obscure),
+                  ),
+                ),
+                onSubmitted: (_) => Navigator.of(ctx).pop(
+                  _DeleteAuthPromptResult(
+                    deletedBy: deletedByCtrl.text.trim(),
+                    password: passwordCtrl.text.trim(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const TrText('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(
+                _DeleteAuthPromptResult(
+                  deletedBy: deletedByCtrl.text.trim(),
+                  password: passwordCtrl.text.trim(),
+                ),
+              ),
+              child: const TrText('Continue'),
+            ),
+          ],
+        ),
+      ),
+    );
+    deletedByCtrl.dispose();
+    passwordCtrl.dispose();
+    return result;
   }
 
   Future<void> _callPhone(String phone) async {
@@ -112,16 +212,21 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
     if (confirmed != true) return;
     if (!mounted) return;
 
-    var adminKey = ref.read(qcAdminApiKeyProvider).trim();
-    if (adminKey.isEmpty) {
-      final entered = await showQcAdminKeyDialog(
-        context: context,
-        initialValue: adminKey,
-      );
-      if (entered == null) return;
+    final deleteAuth = await _promptDeletePassword();
+    if (deleteAuth == null) return;
+    if (deleteAuth.deletedBy.trim().isEmpty) {
       if (!mounted) return;
-      await ref.read(qcAdminApiKeyProvider.notifier).setKey(entered);
-      adminKey = entered.trim();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: TrText('Deleted by required')),
+      );
+      return;
+    }
+    if (deleteAuth.password.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: TrText('Password required')),
+      );
+      return;
     }
 
     if (!mounted) return;
@@ -144,7 +249,12 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
     );
 
     try {
-      await AdminItemsApi().deleteItem(pk: pk, sk: sk, adminKey: adminKey);
+      await AdminItemsApi().deleteItem(
+        pk: pk,
+        sk: sk,
+        adminKey: deleteAuth.password,
+        deletedBy: deleteAuth.deletedBy,
+      );
 
       if (mounted) {
         Navigator.of(context).pop(); // loading
@@ -220,6 +330,8 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                 ),
               ),
               data: (items) {
+                final filteredItems =
+                    items.where((raw) => _matchesFilter(raw)).toList();
                 return Column(
                   children: [
                     Padding(
@@ -240,15 +352,29 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                         ),
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: TextField(
+                        controller: _filterCtrl,
+                        onChanged: (v) => setState(() => _filterQuery = v),
+                        textInputAction: TextInputAction.search,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          hintText: 'Filter items',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
                     Expanded(
-                      child: items.isEmpty
+                      child: filteredItems.isEmpty
                           ? const Center(child: TrText('No places found'))
                           : ListView.separated(
-                              itemCount: items.length + 1,
+                              itemCount: filteredItems.length + 1,
                               separatorBuilder: (_, __) =>
                                   const Divider(height: 1),
                               itemBuilder: (context, i) {
-                                if (i == items.length) {
+                                if (i == filteredItems.length) {
                                   return Padding(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 16,
@@ -267,12 +393,12 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                                           ref.invalidate(entitiesRawProvider);
                                         },
                                         icon: const Icon(Icons.refresh),
-                                        label: const TrText('Reload'),
+                                        label: const TrText('Load more'),
                                       ),
                                     ),
                                   );
                                 }
-                                final raw = items[i];
+                                final raw = filteredItems[i];
                                 final e = Entity.fromJson(raw);
                                 final entityId =
                                     (raw['id'] ?? raw['place_id'] ?? '')

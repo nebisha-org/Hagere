@@ -7,6 +7,8 @@ import '../cache/entities_cache.dart';
 
 class EntitiesApi {
   final String baseUrl = entitiesBaseUrl;
+  // Request a global radius so backend can return far items when nearby data is sparse.
+  static const int _closestItemsRadiusKm = 20000;
 
   /// HOME SPONSORED
   Future<List<Map<String, dynamic>>> getHomeSponsored({String? locale}) async {
@@ -39,6 +41,7 @@ class EntitiesApi {
     final query = <String, String>{
       'lat': lat.toString(),
       'lon': lon.toString(),
+      'radiusKm': _closestItemsRadiusKm.toString(),
     };
     if (limit != null) {
       query['limit'] = limit.toString();
@@ -102,6 +105,7 @@ class EntitiesApi {
     final query = <String, String>{
       'lat': lat.toString(),
       'lon': lon.toString(),
+      'radiusKm': _closestItemsRadiusKm.toString(),
     };
     if (limit != null) {
       query['limit'] = limit.toString();
