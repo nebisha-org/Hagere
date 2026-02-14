@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/admin_items_api.dart';
+import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/qc_mode.dart';
+import '../utils/posted_date.dart';
 import 'add_listing_screen.dart';
 import 'place_detail_screen.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
@@ -106,59 +108,70 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
     final result = await showDialog<_DeleteAuthPromptResult>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const TrText('Enter delete password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: deletedByCtrl,
-                autofocus: true,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Deleted by',
+        builder: (context, setState) {
+          final ready = deletedByCtrl.text.trim().isNotEmpty &&
+              passwordCtrl.text.trim().isNotEmpty;
+          return AlertDialog(
+            title: const TrText('Enter delete password'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: deletedByCtrl,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Deleted by',
+                  ),
+                  onChanged: (_) => setState(() {}),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: passwordCtrl,
-                obscureText: obscure,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  hintText: 'Password',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscure ? Icons.visibility : Icons.visibility_off,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: obscure,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    hintText: 'Password',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscure ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(() => obscure = !obscure),
                     ),
-                    onPressed: () => setState(() => obscure = !obscure),
                   ),
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) {
+                    if (!ready) return;
+                    Navigator.of(ctx).pop(
+                      _DeleteAuthPromptResult(
+                        deletedBy: deletedByCtrl.text.trim(),
+                        password: passwordCtrl.text.trim(),
+                      ),
+                    );
+                  },
                 ),
-                onSubmitted: (_) => Navigator.of(ctx).pop(
-                  _DeleteAuthPromptResult(
-                    deletedBy: deletedByCtrl.text.trim(),
-                    password: passwordCtrl.text.trim(),
-                  ),
-                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(null),
+                child: const TrText('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: ready
+                    ? () => Navigator.of(ctx).pop(
+                          _DeleteAuthPromptResult(
+                            deletedBy: deletedByCtrl.text.trim(),
+                            password: passwordCtrl.text.trim(),
+                          ),
+                        )
+                    : null,
+                child: const TrText('Continue'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(null),
-              child: const TrText('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(
-                _DeleteAuthPromptResult(
-                  deletedBy: deletedByCtrl.text.trim(),
-                  password: passwordCtrl.text.trim(),
-                ),
-              ),
-              child: const TrText('Continue'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
     deletedByCtrl.dispose();
@@ -280,6 +293,7 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
   Widget build(BuildContext context) {
     final loc = ref.watch(effectiveLocationProvider);
     final entitiesAsync = ref.watch(entitiesProvider);
+    final selectedCategory = ref.watch(selectedCategoryProvider);
     final qcState = ref.watch(qcEditStateProvider);
 
     return Scaffold(
@@ -400,6 +414,13 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                                 }
                                 final raw = filteredItems[i];
                                 final e = Entity.fromJson(raw);
+                                final showPostedDate = isPostedDateEntity(
+                                  raw,
+                                  selectedCategoryId: selectedCategory?.id,
+                                );
+                                final postedDateText = showPostedDate
+                                    ? (extractPostedDateText(raw) ?? 'Unknown')
+                                    : null;
                                 final entityId =
                                     (raw['id'] ?? raw['place_id'] ?? '')
                                         .toString();
@@ -448,6 +469,14 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                                           entityType: 'entity',
                                           entityId: entityId,
                                           fieldKey: phoneKey,
+                                        ),
+                                      if (postedDateText != null)
+                                        TrText(
+                                          'Posted: $postedDateText',
+                                          translate: false,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall,
                                         ),
                                     ],
                                   ),

@@ -1,5 +1,6 @@
-import '../config/env.dart'; 
+import '../config/env.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import 'category_providers.dart';
 import '../models/category.dart';
 import '../utils/category_filter.dart';
 import '../utils/geo.dart';
+import '../utils/posted_date.dart';
 import '../models/carousel_item.dart';
 import 'location_name_provider.dart';
 import 'translation_provider.dart';
@@ -25,12 +27,8 @@ const String _debugFallbackLatStr =
 const String _debugFallbackLonStr =
     String.fromEnvironment('DEBUG_FALLBACK_LON', defaultValue: '55.2708');
 
-double _debugFallbackLat() =>
-    double.tryParse(_debugFallbackLatStr) ?? 25.2048;
-double _debugFallbackLon() =>
-    double.tryParse(_debugFallbackLonStr) ?? 55.2708;
-
-
+double _debugFallbackLat() => double.tryParse(_debugFallbackLatStr) ?? 25.2048;
+double _debugFallbackLon() => double.tryParse(_debugFallbackLonStr) ?? 55.2708;
 
 final entitiesApiProvider = Provider<EntitiesApi>((ref) {
   return EntitiesApi();
@@ -62,6 +60,70 @@ final effectiveLocationProvider = Provider<LocationData?>((ref) {
 
 final entitiesRefreshProvider = StateProvider<int>((ref) => 0);
 final entitiesLimitProvider = StateProvider<int>((ref) => 1000);
+final entitiesSyncIntervalProvider =
+    Provider<Duration>((ref) => const Duration(seconds: 45));
+
+class EntitiesSyncDriver with WidgetsBindingObserver {
+  EntitiesSyncDriver({
+    required this.ref,
+    required Duration interval,
+  }) : _interval = interval;
+
+  final Ref ref;
+  final Duration _interval;
+  Timer? _timer;
+  bool _started = false;
+
+  void start() {
+    if (_started) return;
+    _started = true;
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_started) {
+        _triggerRevalidate();
+      }
+    });
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_interval, (_) => _triggerRevalidate());
+  }
+
+  void _triggerRevalidate() {
+    ref.read(entitiesRefreshProvider.notifier).state++;
+    ref.invalidate(entitiesRawProvider);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _triggerRevalidate();
+      _startTimer();
+      return;
+    }
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _timer?.cancel();
+    }
+  }
+
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+  }
+}
+
+final entitiesSyncDriverProvider = Provider<EntitiesSyncDriver>((ref) {
+  final interval = ref.watch(entitiesSyncIntervalProvider);
+  final driver = EntitiesSyncDriver(ref: ref, interval: interval);
+  driver.start();
+  ref.onDispose(driver.dispose);
+  return driver;
+});
 
 final carouselItemsProvider =
     FutureProvider.autoDispose<List<CarouselItem>>((ref) async {
@@ -97,7 +159,6 @@ String? _normalizeState(String raw) {
   final key = trimmed.toLowerCase();
   return stateMap[key] ?? trimmed;
 }
-
 
 final locationControllerProvider = Provider<LocationController>((ref) {
   return LocationController(ref);
@@ -175,17 +236,17 @@ class LocationController {
     await prefs.setDouble('last_location_lon', lon);
   }
 
-Future<LocationData?> _loadFallbackLocation() async {
-  final prefs = await SharedPreferences.getInstance();
-  final lat = prefs.getDouble('last_location_lat');
-  final lon = prefs.getDouble('last_location_lon');
-  if (lat != null && lon != null) {
-    return _locationFromLatLon(lat, lon);
-  }
+  Future<LocationData?> _loadFallbackLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lat = prefs.getDouble('last_location_lat');
+    final lon = prefs.getDouble('last_location_lon');
+    if (lat != null && lon != null) {
+      return _locationFromLatLon(lat, lon);
+    }
 
-  // Release-safe fallback: never leave the app blocked on a location spinner.
-  return _locationFromLatLon(_debugFallbackLat(), _debugFallbackLon());
-}
+    // Release-safe fallback: never leave the app blocked on a location spinner.
+    return _locationFromLatLon(_debugFallbackLat(), _debugFallbackLon());
+  }
 
   Future<void> _updateFromLiveLocation({
     Duration timeout = const Duration(seconds: 20),
@@ -337,7 +398,6 @@ final entitiesRawProvider =
     lat: loc.latitude!,
     lon: loc.longitude!,
     limit: limit,
-    ttl: const Duration(days: 3),
     forceRefresh: refresh > 0,
     locale: lang,
   );
@@ -358,6 +418,7 @@ final entitiesProvider =
   final loc = ref.watch(effectiveLocationProvider);
   final locLat = loc?.latitude;
   final locLon = loc?.longitude;
+  final selectedCategoryId = selectedCategory?.id;
 
   return rawAsync.whenData((items) {
     final filtered = selectedCategory == null
@@ -365,6 +426,12 @@ final entitiesProvider =
         : items
             .where((e) => matchesCategoryForEntity(e, selectedCategory))
             .toList();
+
+    if (isPostedDateCategoryId(selectedCategoryId)) {
+      final sorted = List<Map<String, dynamic>>.from(filtered);
+      sorted.sort(compareEntitiesByPostedDateDesc);
+      return sorted;
+    }
 
     if (locLat == null || locLon == null) {
       return filtered;

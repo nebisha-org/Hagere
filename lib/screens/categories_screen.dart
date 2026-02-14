@@ -20,6 +20,7 @@ import 'package:agerelige_flutter_client/widgets/add_listing_carousel.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
 import 'package:agerelige_flutter_client/screens/places_v2_list_screen.dart';
+import 'package:agerelige_flutter_client/screens/my_posted_items_screen.dart';
 import 'feedback_screen.dart';
 import 'place_detail_screen.dart';
 
@@ -141,6 +142,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     }
   }
 
+  void _openMyPostedItems() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const MyPostedItemsScreen(),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -217,6 +226,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   child: appTitleWidget,
                 )
               : appTitleWidget,
+          actions: [
+            IconButton(
+              onPressed: _openMyPostedItems,
+              icon: const Icon(Icons.inventory_2_outlined),
+              tooltip:
+                  ref.read(translationControllerProvider).tr('My posted items'),
+            ),
+          ],
         ),
         body: const Center(
           child: Column(
@@ -253,7 +270,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 child: appTitleWidget,
               )
             : appTitleWidget,
-        actions: null,
+        actions: [
+          IconButton(
+            onPressed: _openMyPostedItems,
+            icon: const Icon(Icons.inventory_2_outlined),
+            tooltip:
+                ref.read(translationControllerProvider).tr('My posted items'),
+          ),
+        ],
       ),
       body: catsAsync.when(
         loading: () => const Center(
@@ -326,6 +350,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
               void openCategory(dynamic c) {
                 ref.read(selectedCategoryProvider.notifier).state = c;
+                ref.read(entitiesRefreshProvider.notifier).state++;
+                ref.invalidate(entitiesRawProvider);
 
                 // Don't block navigation on location permission flow.
                 Future(() async {

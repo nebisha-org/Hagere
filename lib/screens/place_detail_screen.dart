@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../utils/geo.dart';
+import '../utils/posted_date.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import '../state/qc_mode.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
@@ -237,8 +238,9 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     final addr = _address(e);
     final lat = _lat(e);
     final lon = _lon(e);
-    final mapUrl =
-        (lat != null && lon != null) ? 'https://maps.google.com/?q=$lat,$lon' : '';
+    final mapUrl = (lat != null && lon != null)
+        ? 'https://maps.google.com/?q=$lat,$lon'
+        : '';
     final parts = [
       if (name.isNotEmpty) name,
       if (addr != null && addr.isNotEmpty) addr,
@@ -258,6 +260,9 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     final hours = _openingHours(e);
     final categories = _extractCategories(e);
     final distance = _toDouble(e['distanceKm']);
+    final showPostedDate = isPostedDateEntity(e);
+    final postedDateText =
+        showPostedDate ? (extractPostedDateText(e) ?? 'Unknown') : null;
     final lat = _lat(e);
     final lon = _lon(e);
     final images = _extractImages(e);
@@ -272,7 +277,8 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
             expandedHeight: 280,
             actions: [
               IconButton(
-                icon: Icon(_isFavorite ? Icons.favorite : Icons.favorite_border),
+                icon:
+                    Icon(_isFavorite ? Icons.favorite : Icons.favorite_border),
                 onPressed: _toggleFavorite,
               ),
               IconButton(
@@ -407,10 +413,18 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                           ),
                       ],
                     ),
-                  if (hours != null || categories.isNotEmpty || distance != null)
+                  if (postedDateText != null ||
+                      hours != null ||
+                      categories.isNotEmpty ||
+                      distance != null)
                     _InfoCard(
                       title: 'Details',
                       children: [
+                        if (postedDateText != null)
+                          _InfoRow(
+                            icon: Icons.calendar_today,
+                            text: 'Posted: $postedDateText',
+                          ),
                         if (hours != null)
                           _InfoRow(
                             icon: Icons.schedule,
@@ -482,7 +496,8 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                           children: [
                             Expanded(
                               child: ElevatedButton.icon(
-                                onPressed: () => _openMaps(lat, lon, name: name),
+                                onPressed: () =>
+                                    _openMaps(lat, lon, name: name),
                                 icon: const Icon(Icons.directions),
                                 label: const TrText('Directions'),
                               ),

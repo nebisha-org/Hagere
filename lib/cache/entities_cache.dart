@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:hive/hive.dart';
+import '../utils/entity_sync.dart';
 
 class EntitiesCache {
   static const String boxName = 'entities_cache_v1';
@@ -22,11 +23,26 @@ class EntitiesCache {
     String cacheKey, {
     required List<dynamic> itemsJson, // list of maps (already json-ready)
     String? etag,
+    String? lastModified,
+    int? validatedAtMs,
   }) async {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final stampedItems = itemsJson
+        .whereType<Map>()
+        .map<Map<String, dynamic>>(
+          (e) => withSyncMetadata(
+            e.cast<String, dynamic>(),
+            fallbackStampMs: nowMs,
+          ),
+        )
+        .toList();
+
     final payload = <String, dynamic>{
-      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      'updatedAt': nowMs,
+      'validatedAt': validatedAtMs ?? nowMs,
       'etag': etag,
-      'items': itemsJson,
+      'lastModified': lastModified,
+      'items': stampedItems,
     };
     await box.put(cacheKey, jsonEncode(payload));
   }
@@ -41,8 +57,17 @@ class EntitiesCache {
     String cacheKey, {
     required List<dynamic> itemsJson,
     String? etag,
+    String? lastModified,
+    int? validatedAtMs,
   }) async {
-    await write(box, cacheKey, itemsJson: itemsJson, etag: etag);
+    await write(
+      box,
+      cacheKey,
+      itemsJson: itemsJson,
+      etag: etag,
+      lastModified: lastModified,
+      validatedAtMs: validatedAtMs,
+    );
   }
 
   static Future<bool> applyOverrideToAll({
@@ -65,10 +90,18 @@ class EntitiesCache {
       final itemsJson = items(cached);
       bool changed = false;
 
-      for (final item in itemsJson) {
+      for (var i = 0; i < itemsJson.length; i++) {
+        final item = itemsJson[i];
         if (item is! Map) continue;
-        if (!_matchesEntity(item, entityId)) continue;
-        if (_setPathValue(item, fieldKey, value)) {
+        final mapped = item.map((k, v) => MapEntry(k.toString(), v));
+        if (!_matchesEntity(mapped, entityId)) continue;
+        if (_setPathValue(mapped, fieldKey, value)) {
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
+          mapped['_clientUpdatedAtMs'] = nowMs;
+          itemsJson[i] = withSyncMetadata(
+            mapped,
+            fallbackStampMs: nowMs,
+          );
           changed = true;
         }
       }
@@ -79,6 +112,8 @@ class EntitiesCache {
           key,
           itemsJson: itemsJson,
           etag: etag(cached),
+          lastModified: lastModified(cached),
+          validatedAtMs: DateTime.now().millisecondsSinceEpoch,
         );
         updated = true;
       }
@@ -103,11 +138,14 @@ class EntitiesCache {
     return v is String ? v : null;
   }
 
+  static String? lastModified(Map<String, dynamic> cached) {
+    final v = cached['lastModified'];
+    return v is String ? v : null;
+  }
+
   static bool _matchesEntity(Map<dynamic, dynamic> item, String entityId) {
-    final id = item['id'] ??
-        item['entityId'] ??
-        item['item_id'] ??
-        item['itemId'];
+    final id =
+        item['id'] ?? item['entityId'] ?? item['item_id'] ?? item['itemId'];
     return id?.toString() == entityId;
   }
 

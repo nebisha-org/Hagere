@@ -11,6 +11,7 @@ import 'package:agerelige_flutter_client/screens/categories_screen.dart';
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
 import 'package:agerelige_flutter_client/screens/feedback_screen.dart';
 import 'package:agerelige_flutter_client/cache/entities_cache.dart';
+import 'package:agerelige_flutter_client/state/providers.dart';
 import 'package:agerelige_flutter_client/state/translation_provider.dart';
 import 'firebase_options.dart';
 
@@ -33,11 +34,13 @@ Future<void> main() async {
   );
 }
 
-class AgereLigeApp extends StatelessWidget {
+class AgereLigeApp extends ConsumerWidget {
   const AgereLigeApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(entitiesSyncDriverProvider);
+
     return MaterialApp(
       // Always hide the Flutter debug banner. Reviewers flagged debug banners in
       // App Store screenshots (Guideline 2.3.10).
