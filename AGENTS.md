@@ -4,6 +4,19 @@ Date: 2026-01-29
 Owner: Nebyate Endalamaw
 Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch: v2)
 
+## Mandatory Startup Protocol (No Exceptions)
+- At the moment a new Codex session begins, read all of these before any action:
+1. `../START_HERE_ALLHABESHA.md`
+2. `../ALLHABESHA_APP_BRIEF.md`
+3. `../AGENT_LEARNINGS_LAST_30_DAYS.md`
+4. `../AGENTS.md`
+5. `AGENTS.md` (this file)
+6. `../PROJECT_NOTES.md`
+7. `../.store_status/latest.json`
+- Do not code, release, or answer status questions until these are read.
+- First response in a new session must explicitly confirm these files were read.
+- If there is any conflict, `../START_HERE_ALLHABESHA.md` is the source of truth.
+
 ## ✅ Latest updates (2026-02-13)
 - Google Play Console account type migration completed:
   - `Account type: Organization`
