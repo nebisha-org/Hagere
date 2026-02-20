@@ -11,7 +11,7 @@ final paymentTypeProvider =
 );
 
 class PaymentTypeController extends StateNotifier<PaymentType> {
-  PaymentTypeController() : super(PaymentType.oneTime) {
+  PaymentTypeController() : super(PaymentType.subscription) {
     _load();
   }
 
@@ -19,13 +19,10 @@ class PaymentTypeController extends StateNotifier<PaymentType> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString(_paymentTypePrefsKey);
     if (_userSet) return;
-    if (stored == PaymentType.subscription.name) {
-      state = PaymentType.subscription;
-    } else {
-      state = PaymentType.oneTime;
-    }
+    // Always boot with Subscription as the app default.
+    state = PaymentType.subscription;
+    await prefs.setString(_paymentTypePrefsKey, PaymentType.subscription.name);
   }
 
   Future<void> setType(PaymentType type) async {

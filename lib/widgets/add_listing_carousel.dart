@@ -21,6 +21,7 @@ class PromoTileData {
     this.onTap,
     this.entityType,
     this.entityId,
+    this.item,
   });
 
   final String title;
@@ -34,6 +35,7 @@ class PromoTileData {
   final VoidCallback? onTap;
   final String? entityType;
   final String? entityId;
+  final CarouselItem? item;
 }
 
 class AddListingCarousel extends StatefulWidget {
@@ -105,6 +107,7 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
             onTap: hasEntityTap ? () => widget.onEntityTap!(item) : null,
             entityType: 'carousel',
             entityId: item.itemId,
+            item: item,
           ),
         );
       }
@@ -154,6 +157,16 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
     final current = (_controller.page ?? _basePage).round();
     _controller.animateToPage(
       current + 1,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _goToPreviousSlide() {
+    if (!_controller.hasClients) return;
+    final current = (_controller.page ?? _basePage).round();
+    _controller.animateToPage(
+      current - 1,
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOut,
     );
@@ -213,6 +226,7 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
           final tile = _tiles[index % _tiles.length];
           return _PromoTile(
             data: tile,
+            onPrevSlide: _goToPreviousSlide,
             onNextSlide: _goToNextSlide,
           );
         },
@@ -224,10 +238,12 @@ class _AddListingCarouselState extends State<AddListingCarousel> {
 class _PromoTile extends StatelessWidget {
   const _PromoTile({
     required this.data,
+    this.onPrevSlide,
     this.onNextSlide,
   });
 
   final PromoTileData data;
+  final VoidCallback? onPrevSlide;
   final VoidCallback? onNextSlide;
   static const bool _disableRemoteImages =
       bool.fromEnvironment('DISABLE_REMOTE_IMAGES', defaultValue: false);
@@ -237,6 +253,10 @@ class _PromoTile extends StatelessWidget {
     final hasImage = data.imageUrl != null && data.imageUrl!.isNotEmpty;
     final canEdit = data.entityType != null && data.entityId != null;
     final isAddListingTile = data.tileKey == const Key('add_listing_tile');
+    final aiHasImageText = data.item?.aiImageHasText == true;
+    final aiLayoutMode = (data.item?.aiLayoutMode ?? '').trim().toLowerCase();
+    final preferReadableOverlay =
+        aiHasImageText || aiLayoutMode == 'separate_media';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: Material(
@@ -309,7 +329,10 @@ class _PromoTile extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: data.gradient
-                              .map((c) => hasImage ? c.withOpacity(0.6) : c)
+                              .map((c) => hasImage
+                                  ? c.withOpacity(
+                                      preferReadableOverlay ? 0.84 : 0.6)
+                                  : c)
                               .toList(),
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -321,6 +344,20 @@ class _PromoTile extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
+                        IconButton(
+                          onPressed: onPrevSlide,
+                          tooltip: 'Previous',
+                          icon: const Icon(
+                            Icons.chevron_left,
+                            color: Colors.white70,
+                          ),
+                          splashRadius: 18,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
                         CircleAvatar(
                           backgroundColor: Colors.white.withOpacity(0.2),
                           child: Icon(data.icon, color: Colors.white),
@@ -445,6 +482,18 @@ class _PromoTile extends StatelessWidget {
   }
 }
 
+class _LinkAction {
+  const _LinkAction({
+    required this.label,
+    required this.url,
+    required this.icon,
+  });
+
+  final String label;
+  final String url;
+  final IconData icon;
+}
+
 class _PromoDetailSheet extends StatelessWidget {
   const _PromoDetailSheet({required this.data});
 
@@ -452,11 +501,31 @@ class _PromoDetailSheet extends StatelessWidget {
   static const bool _disableRemoteImages =
       bool.fromEnvironment('DISABLE_REMOTE_IMAGES', defaultValue: false);
 
+  List<String> _uniqueNonEmpty(Iterable<String> values) {
+    final out = <String>[];
+    final seen = <String>{};
+    for (final raw in values) {
+      final value = raw.trim();
+      if (value.isEmpty) continue;
+      final normalized = value.toLowerCase();
+      if (seen.add(normalized)) {
+        out.add(value);
+      }
+    }
+    return out;
+  }
+
+  Future<void> _launchExternal(String rawUrl) async {
+    final uri = Uri.tryParse(rawUrl.trim());
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   Future<void> _runPrimaryAction(BuildContext context) async {
     final onTap = data.onTap;
     final rawUrl = (data.ctaUrl ?? '').trim();
 
-    Navigator.of(context).pop(); // close sheet first
+    Navigator.of(context).pop();
 
     if (onTap != null) {
       Future.microtask(onTap);
@@ -464,20 +533,175 @@ class _PromoDetailSheet extends StatelessWidget {
     }
 
     if (rawUrl.isEmpty) return;
-    final uri = Uri.tryParse(rawUrl);
-    if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await _launchExternal(rawUrl);
+  }
+
+  Future<void> _openImagePreview(BuildContext context, String imageUrl) async {
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (dialogContext) {
+        return GestureDetector(
+          onTap: () => Navigator.of(dialogContext).pop(),
+          child: Dialog(
+            insetPadding: const EdgeInsets.all(16),
+            backgroundColor: Colors.transparent,
+            child: InteractiveViewer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _glassCard({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.15),
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _actionWrap(List<_LinkAction> actions) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: actions
+          .map(
+            (action) => OutlinedButton.icon(
+              onPressed: () => _launchExternal(action.url),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white.withOpacity(0.35)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              icon: Icon(action.icon, size: 16),
+              label: Text(
+                action.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+          .toList(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasImage =
-        (data.imageUrl ?? '').trim().isNotEmpty && !_disableRemoteImages;
+    final item = data.item;
+    final details = (item?.details ?? '').trim();
+    final phone = (item?.phone ?? '').trim();
+    final email = (item?.email ?? '').trim();
+    final websiteUrl = (item?.websiteUrl ?? '').trim();
+    final instagramUrl = (item?.instagramUrl ?? '').trim();
+    final facebookUrl = (item?.facebookUrl ?? '').trim();
+    final tiktokUrl = (item?.tiktokUrl ?? '').trim();
+    final youtubeUrl = (item?.youtubeUrl ?? '').trim();
+    final xUrl = (item?.xUrl ?? '').trim();
+    final aiHasImageText = item?.aiImageHasText == true;
+    final aiDensity = (item?.aiImageTextDensity ?? '').trim();
+    final aiExcerpt = (item?.aiImageTextExcerpt ?? '').trim();
+    final aiLayoutMode = (item?.aiLayoutMode ?? '').trim().toLowerCase();
+    final aiLayoutReason = (item?.aiLayoutReason ?? '').trim();
+
+    final imageUrls = _uniqueNonEmpty([
+      (data.imageUrl ?? '').trim(),
+      ...?item?.imageUrls,
+    ]);
+    final videoUrls = _uniqueNonEmpty([
+      (item?.videoUrl ?? '').trim(),
+      ...?item?.videoUrls,
+    ]);
+
+    final hasImage = imageUrls.isNotEmpty && !_disableRemoteImages;
+    final preferSeparateMedia =
+        aiLayoutMode == 'separate_media' || aiHasImageText;
+    final showHeroBackground = hasImage && !preferSeparateMedia;
     final hasPrimary =
         data.onTap != null || (data.ctaUrl ?? '').trim().isNotEmpty;
     final primaryLabel = (data.ctaLabel ?? '').trim().isNotEmpty
         ? data.ctaLabel!.trim()
         : (data.onTap != null ? 'View details' : 'Open');
+
+    final dialPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final contactActions = <_LinkAction>[
+      if (dialPhone.isNotEmpty)
+        _LinkAction(label: 'Call', url: 'tel:$dialPhone', icon: Icons.call),
+      if (email.isNotEmpty)
+        _LinkAction(
+          label: 'Email',
+          url: 'mailto:$email',
+          icon: Icons.email_outlined,
+        ),
+      if (websiteUrl.isNotEmpty)
+        _LinkAction(
+          label: 'Website',
+          url: websiteUrl,
+          icon: Icons.public_outlined,
+        ),
+    ];
+    final socialActions = <_LinkAction>[
+      if (instagramUrl.isNotEmpty)
+        _LinkAction(
+          label: 'Instagram',
+          url: instagramUrl,
+          icon: Icons.camera_alt_outlined,
+        ),
+      if (facebookUrl.isNotEmpty)
+        _LinkAction(
+          label: 'Facebook',
+          url: facebookUrl,
+          icon: Icons.facebook_outlined,
+        ),
+      if (tiktokUrl.isNotEmpty)
+        _LinkAction(label: 'TikTok', url: tiktokUrl, icon: Icons.music_note),
+      if (youtubeUrl.isNotEmpty)
+        _LinkAction(
+          label: 'YouTube',
+          url: youtubeUrl,
+          icon: Icons.play_circle_outline,
+        ),
+      if (xUrl.isNotEmpty)
+        _LinkAction(label: 'X', url: xUrl, icon: Icons.alternate_email),
+    ];
+    final videoActions = <_LinkAction>[
+      for (final videoUrl in videoUrls)
+        _LinkAction(
+          label: 'Watch video',
+          url: videoUrl,
+          icon: Icons.ondemand_video_outlined,
+        ),
+    ];
 
     final gradient = LinearGradient(
       colors: data.gradient,
@@ -501,10 +725,10 @@ class _PromoDetailSheet extends StatelessWidget {
                 decoration: BoxDecoration(gradient: gradient),
                 child: Stack(
                   children: [
-                    if (hasImage)
+                    if (showHeroBackground)
                       Positioned.fill(
                         child: Image.network(
-                          data.imageUrl!,
+                          imageUrls.first,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                         ),
@@ -512,8 +736,8 @@ class _PromoDetailSheet extends StatelessWidget {
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color:
-                              Colors.black.withOpacity(hasImage ? 0.35 : 0.15),
+                          color: Colors.black
+                              .withOpacity(showHeroBackground ? 0.35 : 0.15),
                         ),
                       ),
                     ),
@@ -546,6 +770,21 @@ class _PromoDetailSheet extends StatelessWidget {
                             controller: scrollController,
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                             children: [
+                              if (hasImage && preferSeparateMedia) ...[
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: AspectRatio(
+                                    aspectRatio: 16 / 9,
+                                    child: Image.network(
+                                      imageUrls.first,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
                               Text(
                                 data.title,
                                 maxLines: 2,
@@ -565,17 +804,157 @@ class _PromoDetailSheet extends StatelessWidget {
                                   height: 1.25,
                                 ),
                               ),
-                              if ((data.ctaUrl ?? '').trim().isNotEmpty) ...[
-                                const SizedBox(height: 14),
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.15),
+                              const SizedBox(height: 12),
+                              _glassCard(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.event_outlined,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        data.subtitle,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          height: 1.3,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (details.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                _sectionTitle('About this event'),
+                                _glassCard(
+                                  child: Text(
+                                    details,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      height: 1.3,
                                     ),
                                   ),
+                                ),
+                              ],
+                              if (aiHasImageText ||
+                                  aiExcerpt.isNotEmpty ||
+                                  aiLayoutReason.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                _sectionTitle('Smart readability'),
+                                _glassCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        preferSeparateMedia
+                                            ? 'Image separated from text for clearer reading.'
+                                            : 'Overlay readability verified by AI.',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      if (aiDensity.isNotEmpty)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 6),
+                                          child: Text(
+                                            'Detected text density: $aiDensity',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      if (aiExcerpt.isNotEmpty)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 6),
+                                          child: Text(
+                                            'Detected text: "$aiExcerpt"',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      if (aiLayoutReason.isNotEmpty)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 6),
+                                          child: Text(
+                                            aiLayoutReason,
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              if (imageUrls.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                _sectionTitle('Photos'),
+                                SizedBox(
+                                  height: 96,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: imageUrls.length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(width: 10),
+                                    itemBuilder: (context, index) {
+                                      final imageUrl = imageUrls[index];
+                                      return InkWell(
+                                        onTap: () => _openImagePreview(
+                                            context, imageUrl),
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          child: Image.network(
+                                            imageUrl,
+                                            width: 130,
+                                            height: 96,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                const SizedBox(
+                                              width: 130,
+                                              height: 96,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                              if (contactActions.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                _sectionTitle('Contact'),
+                                _actionWrap(contactActions),
+                              ],
+                              if (socialActions.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                _sectionTitle('Social'),
+                                _actionWrap(socialActions),
+                              ],
+                              if (videoActions.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                _sectionTitle('Videos'),
+                                _actionWrap(videoActions),
+                              ],
+                              if ((data.ctaUrl ?? '').trim().isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                _glassCard(
                                   child: Row(
                                     children: [
                                       const Icon(

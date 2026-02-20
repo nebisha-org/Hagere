@@ -17,6 +17,7 @@ import '../models/carousel_item.dart';
 
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_carousel.dart';
+import 'package:agerelige_flutter_client/widgets/location_required_gate.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
 import 'package:agerelige_flutter_client/screens/places_v2_list_screen.dart';
@@ -195,6 +196,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final entityIdAsync = ref.watch(currentEntityIdProvider);
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
     final carouselAsync = ref.watch(carouselItemsProvider);
+    final locationBlockReason = ref.watch(locationBlockReasonProvider);
     final appTitle = ref.watch(resolvedAppTitleProvider);
     final appTitleWidget = QcEditableText(
       appTitle,
@@ -235,16 +237,18 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             ),
           ],
         ),
-        body: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 12),
-              TrText('Getting your location...'),
-            ],
-          ),
-        ),
+        body: locationBlockReason == null
+            ? const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    TrText('Getting your location...'),
+                  ],
+                ),
+              )
+            : const LocationRequiredGate(),
       );
     }
 
@@ -350,7 +354,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
               void openCategory(dynamic c) {
                 ref.read(selectedCategoryProvider.notifier).state = c;
-                ref.read(entitiesRefreshProvider.notifier).state++;
                 ref.invalidate(entitiesRawProvider);
 
                 // Don't block navigation on location permission flow.

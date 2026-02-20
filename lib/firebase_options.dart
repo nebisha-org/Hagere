@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyC1sZU4xKaD5wN1KfqVgUvbAiBvUfxDW-k',
-    appId: '1:487886804143:android:26a64bac0738bec6e6f05a',
+    appId: '1:487886804143:android:70dfd8703ab9c9b7e6f05a',
     messagingSenderId: '487886804143',
     projectId: 'hagere-663c4',
     storageBucket: 'hagere-663c4.firebasestorage.app',
@@ -59,10 +59,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCiKTr0VyX-D7-Px1YX1Ii5okFTmWh5YFM',
-    appId: '1:487886804143:ios:627f3a9802b91b10e6f05a',
+    appId: '1:487886804143:ios:96838593027b872ee6f05a',
     messagingSenderId: '487886804143',
     projectId: 'hagere-663c4',
     storageBucket: 'hagere-663c4.firebasestorage.app',
-    iosBundleId: 'com.example.agereligeFlutterClient',
+    iosBundleId: 'com.digitalnebi.allhabesha',
   );
+
 }

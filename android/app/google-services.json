@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:487886804143:android:70dfd8703ab9c9b7e6f05a",
+        "android_client_info": {
+          "package_name": "com.digitalnebi.allhabesha"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1sZU4xKaD5wN1KfqVgUvbAiBvUfxDW-k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:487886804143:android:26a64bac0738bec6e6f05a",
         "android_client_info": {
           "package_name": "com.example.agerelige_flutter_client"

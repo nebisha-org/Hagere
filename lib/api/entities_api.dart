@@ -11,6 +11,7 @@ class EntitiesApi {
   // Request a global radius so backend can return far items when nearby data is sparse.
   static const int _closestItemsRadiusKm = 20000;
   static const int _myEntitiesChunkSize = 40;
+  final Set<String> _revalidateInFlight = <String>{};
 
   /// HOME SPONSORED
   Future<List<Map<String, dynamic>>> getHomeSponsored({String? locale}) async {
@@ -286,6 +287,97 @@ class EntitiesApi {
     return '"${fnv1a32Hex(parts.join('|'))}"';
   }
 
+  Future<List<Map<String, dynamic>>> _fetchAndUpdateCache({
+    required Box box,
+    required String cacheKey,
+    required Uri uri,
+    required List<Map<String, dynamic>> cachedItems,
+    required Map<String, dynamic>? cached,
+    required bool forceRefresh,
+  }) async {
+    final headers = <String, String>{'Accept': 'application/json'};
+    final etag = cached == null ? null : EntitiesCache.etag(cached);
+    if (!forceRefresh && etag != null && etag.isNotEmpty) {
+      headers['If-None-Match'] = etag;
+    }
+    final lastModified =
+        cached == null ? null : EntitiesCache.lastModified(cached);
+    if (!forceRefresh &&
+        lastModified != null &&
+        lastModified.trim().isNotEmpty) {
+      headers['If-Modified-Since'] = lastModified;
+    }
+
+    if (kDebugMode) {
+      debugPrint('[EntitiesApi] GET $uri (cached=${cached != null})');
+    }
+    final sw = Stopwatch()..start();
+    final res = await http.get(uri, headers: headers);
+    if (kDebugMode) {
+      debugPrint(
+        '[EntitiesApi] status=${res.statusCode} ${sw.elapsedMilliseconds}ms',
+      );
+    }
+
+    if (res.statusCode == 304 && cached != null) {
+      await EntitiesCache.touch(
+        box,
+        cacheKey,
+        itemsJson: cachedItems,
+        etag: EntitiesCache.etag(cached),
+        lastModified: EntitiesCache.lastModified(cached),
+        validatedAtMs: DateTime.now().millisecondsSinceEpoch,
+      );
+      return cachedItems;
+    }
+
+    if (res.statusCode != 200) throw Exception(res.body);
+    final serverItems = _decodeEntities(res.body);
+    final mergedItems = _mergeEntities(
+      cachedItems: cachedItems,
+      serverItems: serverItems,
+    );
+    final responseEtag = res.headers['etag'];
+    await EntitiesCache.write(
+      box,
+      cacheKey,
+      itemsJson: mergedItems,
+      etag: (responseEtag != null && responseEtag.isNotEmpty)
+          ? responseEtag
+          : _collectionEtag(mergedItems),
+      lastModified: res.headers['last-modified'],
+      validatedAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    return mergedItems;
+  }
+
+  void _revalidateInBackground({
+    required Box box,
+    required String cacheKey,
+    required Uri uri,
+    required List<Map<String, dynamic>> cachedItems,
+    required Map<String, dynamic>? cached,
+  }) {
+    if (_revalidateInFlight.contains(cacheKey)) return;
+    _revalidateInFlight.add(cacheKey);
+    Future(() async {
+      try {
+        await _fetchAndUpdateCache(
+          box: box,
+          cacheKey: cacheKey,
+          uri: uri,
+          cachedItems: cachedItems,
+          cached: cached,
+          forceRefresh: false,
+        );
+      } catch (_) {
+        // Keep stale cache visible if background revalidate fails.
+      } finally {
+        _revalidateInFlight.remove(cacheKey);
+      }
+    });
+  }
+
   /// CACHE WRAPPER
   Future<List<Map<String, dynamic>>> fetchEntitiesCached({
     required String regionKey,
@@ -305,67 +397,32 @@ class EntitiesApi {
     final cached = EntitiesCache.read(box, cacheKey);
     final cachedItems =
         cached == null ? <Map<String, dynamic>>[] : _cachedItems(cached);
+    final uri = _entitiesUri(
+      lat: lat,
+      lon: lon,
+      limit: limit,
+    );
+
+    if (!forceRefresh && cached != null) {
+      _revalidateInBackground(
+        box: box,
+        cacheKey: cacheKey,
+        uri: uri,
+        cachedItems: cachedItems,
+        cached: cached,
+      );
+      return cachedItems;
+    }
 
     try {
-      final uri = _entitiesUri(
-        lat: lat,
-        lon: lon,
-        limit: limit,
-      );
-      final headers = <String, String>{'Accept': 'application/json'};
-      final etag = cached == null ? null : EntitiesCache.etag(cached);
-      if (!forceRefresh && etag != null && etag.isNotEmpty) {
-        headers['If-None-Match'] = etag;
-      }
-      final lastModified =
-          cached == null ? null : EntitiesCache.lastModified(cached);
-      if (!forceRefresh &&
-          lastModified != null &&
-          lastModified.trim().isNotEmpty) {
-        headers['If-Modified-Since'] = lastModified;
-      }
-
-      if (kDebugMode) {
-        debugPrint('[EntitiesApi] GET $uri (cached=${cached != null})');
-      }
-      final sw = Stopwatch()..start();
-      final res = await http.get(uri, headers: headers);
-      if (kDebugMode) {
-        debugPrint(
-          '[EntitiesApi] status=${res.statusCode} ${sw.elapsedMilliseconds}ms',
-        );
-      }
-
-      if (res.statusCode == 304 && cached != null) {
-        await EntitiesCache.touch(
-          box,
-          cacheKey,
-          itemsJson: cachedItems,
-          etag: EntitiesCache.etag(cached),
-          lastModified: EntitiesCache.lastModified(cached),
-          validatedAtMs: DateTime.now().millisecondsSinceEpoch,
-        );
-        return cachedItems;
-      }
-
-      if (res.statusCode != 200) throw Exception(res.body);
-      final serverItems = _decodeEntities(res.body);
-      final mergedItems = _mergeEntities(
+      return await _fetchAndUpdateCache(
+        box: box,
+        cacheKey: cacheKey,
+        uri: uri,
         cachedItems: cachedItems,
-        serverItems: serverItems,
+        cached: cached,
+        forceRefresh: forceRefresh,
       );
-      final responseEtag = res.headers['etag'];
-      await EntitiesCache.write(
-        box,
-        cacheKey,
-        itemsJson: mergedItems,
-        etag: (responseEtag != null && responseEtag.isNotEmpty)
-            ? responseEtag
-            : _collectionEtag(mergedItems),
-        lastModified: res.headers['last-modified'],
-        validatedAtMs: DateTime.now().millisecondsSinceEpoch,
-      );
-      return mergedItems;
     } catch (e) {
       if (cached != null) {
         return cachedItems;

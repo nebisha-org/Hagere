@@ -23,13 +23,10 @@ class StripeModeController extends StateNotifier<StripeMode> {
   Future<void> _load() async {
     if (!allowTest) return;
     final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString(_stripeModePrefsKey);
     if (_userSet) return;
-    if (stored == StripeMode.test.name) {
-      state = StripeMode.test;
-    } else {
-      state = StripeMode.live;
-    }
+    // Always boot with Live mode as the app default.
+    state = StripeMode.live;
+    await prefs.setString(_stripeModePrefsKey, StripeMode.live.name);
   }
 
   Future<void> setMode(StripeMode mode) async {

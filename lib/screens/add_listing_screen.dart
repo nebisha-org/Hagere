@@ -23,6 +23,7 @@ import '../state/sponsored_providers.dart';
 import '../state/payment_type_provider.dart';
 import '../state/stripe_mode_provider.dart';
 import '../state/translation_provider.dart';
+import '../services/posted_entities_store.dart';
 import '../widgets/tr_text.dart';
 
 enum AddListingOrigin {
@@ -74,6 +75,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   bool _authWorking = false;
   String? _authLabel;
   bool _guestMode = false;
+  String? _localAuthProviderId;
+  String? _localAuthUserId;
+  String? _localAuthEmail;
   StreamSubscription<User?>? _authSub;
   static Future<void>? _googleInitShared;
   Future<void>? _googleInit;
@@ -111,6 +115,19 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (!mounted) return;
       if (user == null) {
+        if (_localAuthProviderId != null) {
+          setState(() {
+            _guestMode = false;
+            _authUnlocked = true;
+            _authLabel = _authLabel ?? 'Signed in';
+          });
+          _analytics.setUserId(id: _localAuthUserId);
+          _analytics.setUserProperty(
+            name: 'auth_provider',
+            value: _localAuthProviderId,
+          );
+          return;
+        }
         setState(() {
           _authUnlocked = _guestMode;
           _authLabel = _guestMode ? 'Guest' : null;
@@ -120,6 +137,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       }
       final label = user.displayName ?? user.email ?? 'Signed in';
       setState(() {
+        _clearLocalAuth();
         _guestMode = false;
         _authUnlocked = true;
         _authLabel = label;
@@ -171,6 +189,32 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     _snack('$e');
   }
 
+  void _clearLocalAuth() {
+    _localAuthProviderId = null;
+    _localAuthUserId = null;
+    _localAuthEmail = null;
+  }
+
+  void _applyLocalAuth({
+    required String providerId,
+    required String userId,
+    String? email,
+    String? label,
+  }) {
+    final cleanUserId = userId.trim();
+    final cleanEmail = (email ?? '').trim();
+    final fallbackId =
+        '$providerId-${DateTime.now().millisecondsSinceEpoch.toString()}';
+    _localAuthProviderId = providerId;
+    _localAuthUserId = cleanUserId.isEmpty ? fallbackId : cleanUserId;
+    _localAuthEmail = cleanEmail.isEmpty ? null : cleanEmail;
+    _guestMode = false;
+    _authUnlocked = true;
+    final resolvedLabel =
+        (label ?? _localAuthEmail ?? providerId.replaceAll('.com', '')).trim();
+    _authLabel = resolvedLabel.isEmpty ? 'Signed in' : resolvedLabel;
+  }
+
   String _authErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'invalid-email':
@@ -213,6 +257,75 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       case GoogleSignInExceptionCode.unknownError:
         return e.description ?? 'Google sign-in failed.';
     }
+  }
+
+  bool _isIosGoogleClientConfigError(Object error) {
+    final msg = error.toString().toLowerCase();
+    return msg.contains('no active configuration') ||
+        msg.contains('gidclientid') ||
+        msg.contains('clientconfigurationerror') ||
+        msg.contains('providerconfigurationerror');
+  }
+
+  bool _isFirebaseAuthCancellation(FirebaseAuthException e) {
+    final code = e.code.trim().toLowerCase();
+    return code == 'web-context-cancelled' ||
+        code == 'user-cancelled' ||
+        code == 'canceled' ||
+        code == 'cancelled';
+  }
+
+  Future<String> _resolveLocalGoogleFallbackUserId() async {
+    const key = 'add_listing_google_local_user_id_v1';
+    final prefs = ref.read(sharedPreferencesProvider);
+    final existing = (prefs.getString(key) ?? '').trim();
+    if (existing.isNotEmpty) return existing;
+
+    final created = 'google-local-${DateTime.now().millisecondsSinceEpoch}';
+    await prefs.setString(key, created);
+    return created;
+  }
+
+  Future<void> _activateLocalGoogleFallback() async {
+    final localUserId = await _resolveLocalGoogleFallbackUserId();
+    if (!mounted) return;
+    setState(() {
+      _applyLocalAuth(
+        providerId: 'google.com',
+        userId: localUserId,
+        label: 'Google',
+      );
+    });
+    _analytics.setUserId(id: _localAuthUserId);
+    _analytics.setUserProperty(name: 'auth_provider', value: 'google.local');
+  }
+
+  Future<void> _signInWithGoogleViaFirebaseProvider() async {
+    final provider = GoogleAuthProvider();
+    provider.addScope('email');
+    provider.setCustomParameters({'prompt': 'select_account'});
+    await FirebaseAuth.instance.signInWithProvider(provider);
+  }
+
+  Future<GoogleSignInAccount> _signInWithGoogleViaNativePlugin() async {
+    if (!GoogleSignIn.instance.supportsAuthenticate()) {
+      throw Exception('Google sign-in is not supported on this device.');
+    }
+    await _googleInit;
+    final googleUser = await GoogleSignIn.instance.authenticate();
+    final auth = googleUser.authentication;
+    final idToken = auth.idToken;
+    if (idToken != null && idToken.trim().isNotEmpty) {
+      final credential = GoogleAuthProvider.credential(
+        idToken: idToken,
+      );
+      try {
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      } catch (e) {
+        _log('GOOGLE NATIVE -> FIREBASE LINK FAILED: $e');
+      }
+    }
+    return googleUser;
   }
 
   String _generateNonce([int length = 32]) {
@@ -361,6 +474,28 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     return uploaded;
   }
 
+  Future<void> _rememberPostedEntity({
+    required String entityId,
+    required User? user,
+    String? localUserId,
+  }) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final store = PostedEntitiesStore(prefs);
+    final localId = (localUserId ?? '').trim();
+    if (user == null && localId.isNotEmpty) {
+      await store.addUserEntityId(userId: 'local_$localId', entityId: entityId);
+      // Local social auth fallback is not globally exposed outside this screen,
+      // so also mirror into guest history for My Posted Items visibility.
+      await store.addGuestEntityId(entityId);
+      return;
+    }
+    if (user == null) {
+      await store.addGuestEntityId(entityId);
+      return;
+    }
+    await store.addUserEntityId(userId: user.uid, entityId: entityId);
+  }
+
   Future<String> _createEntity({
     List<_UploadedListingImage> uploadedImages = const [],
   }) async {
@@ -475,6 +610,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       if (user.email != null && user.email!.trim().isNotEmpty) {
         body["ownerEmail"] = user.email!.trim();
       }
+    } else if (!_guestMode && _localAuthProviderId != null) {
+      final localOwnerId = (_localAuthUserId ?? '').trim();
+      if (localOwnerId.isNotEmpty) {
+        body["ownerId"] = localOwnerId;
+      }
+      body["ownerProvider"] = _localAuthProviderId;
+      if ((_localAuthEmail ?? '').trim().isNotEmpty) {
+        body["ownerEmail"] = _localAuthEmail!.trim();
+      }
     }
 
     _log('CREATE ENTITY: POST $uri');
@@ -516,6 +660,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     final entityId = id.toString();
     _log('CREATE ENTITY: id=$entityId');
+    try {
+      await _rememberPostedEntity(
+        entityId: entityId,
+        user: user,
+        localUserId: _localAuthUserId,
+      );
+    } catch (e) {
+      _log('POSTED ENTITY SAVE ERROR: $e');
+    }
     return entityId;
   }
 
@@ -1030,36 +1183,99 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (!mounted) return;
     setState(() => _authWorking = true);
     try {
-      if (!GoogleSignIn.instance.supportsAuthenticate()) {
-        _snack('Google sign-in is not supported on this device.');
-        return;
-      }
       await _analytics.logEvent(
         name: 'login_start',
         parameters: {'provider': 'google'},
       );
-      await _googleInit;
-      final googleUser = await GoogleSignIn.instance.authenticate();
-      final auth = googleUser.authentication;
-      if (auth.idToken == null || auth.idToken!.trim().isEmpty) {
-        throw Exception(
-          'Google sign-in did not return an ID token. Check iOS Google Sign-In configuration.',
+
+      Future<void> finishWithNativeGoogle() async {
+        final googleUser = await _signInWithGoogleViaNativePlugin();
+        if (FirebaseAuth.instance.currentUser == null && mounted) {
+          setState(() {
+            _applyLocalAuth(
+              providerId: 'google.com',
+              userId: googleUser.id,
+              email: googleUser.email,
+              label: googleUser.displayName ?? googleUser.email,
+            );
+          });
+          _analytics.setUserId(id: _localAuthUserId);
+          _analytics.setUserProperty(
+            name: 'auth_provider',
+            value: 'google.local',
+          );
+        }
+        await _analytics.logEvent(
+          name: 'login_success',
+          parameters: {
+            'provider': FirebaseAuth.instance.currentUser == null
+                ? 'google_local'
+                : 'google_native',
+          },
         );
       }
-      final credential = GoogleAuthProvider.credential(
-        idToken: auth.idToken,
-      );
-      await FirebaseAuth.instance.signInWithCredential(credential);
-      await _analytics.logEvent(
-        name: 'login_success',
-        parameters: {'provider': 'google'},
-      );
+
+      // On iOS, prefer native plugin flow to avoid provider path instability.
+      // If iOS Google client keys are missing, keep the Google option usable
+      // via stable local fallback instead of blocking listing creation.
+      if (Platform.isIOS) {
+        try {
+          await finishWithNativeGoogle();
+          return;
+        } catch (nativeError) {
+          if (_isIosGoogleClientConfigError(nativeError)) {
+            await _activateLocalGoogleFallback();
+            await _analytics.logEvent(
+              name: 'login_success',
+              parameters: {'provider': 'google_local_missing_ios_config'},
+            );
+            return;
+          }
+          _log('GOOGLE NATIVE SIGN-IN FAILED: $nativeError');
+        }
+
+        try {
+          await _signInWithGoogleViaFirebaseProvider();
+          await _analytics.logEvent(
+            name: 'login_success',
+            parameters: {'provider': 'google'},
+          );
+          return;
+        } on FirebaseAuthException catch (firebaseError) {
+          _log('GOOGLE PROVIDER SIGN-IN FAILED: ${firebaseError.code}');
+          if (_isFirebaseAuthCancellation(firebaseError)) {
+            return;
+          }
+          rethrow;
+        }
+      }
+
+      try {
+        await _signInWithGoogleViaFirebaseProvider();
+        await _analytics.logEvent(
+          name: 'login_success',
+          parameters: {'provider': 'google'},
+        );
+        return;
+      } on FirebaseAuthException catch (firebaseError) {
+        _log('GOOGLE PROVIDER SIGN-IN FAILED: ${firebaseError.code}');
+      } catch (providerError) {
+        _log('GOOGLE PROVIDER SIGN-IN FAILED: $providerError');
+      }
+
+      await finishWithNativeGoogle();
     } on GoogleSignInException catch (e) {
+      if (Platform.isIOS && _isIosGoogleClientConfigError(e)) {
+        _snack(
+          'Google sign-in iOS config is incomplete. Try again after Firebase Google provider setup.',
+        );
+      } else {
+        _snack(_googleErrorMessage(e));
+      }
       await _analytics.logEvent(
         name: 'login_failure',
         parameters: {'provider': 'google', 'code': e.code.name},
       );
-      _snack(_googleErrorMessage(e));
     } on FirebaseAuthException catch (e) {
       await _analytics.logEvent(
         name: 'login_failure',
@@ -1110,11 +1326,36 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         accessToken: appleCredential.authorizationCode,
         rawNonce: rawNonce,
       );
-      await FirebaseAuth.instance.signInWithCredential(oauth);
-      await _analytics.logEvent(
-        name: 'login_success',
-        parameters: {'provider': 'apple'},
-      );
+      try {
+        await FirebaseAuth.instance.signInWithCredential(oauth);
+        await _analytics.logEvent(
+          name: 'login_success',
+          parameters: {'provider': 'apple'},
+        );
+      } on FirebaseAuthException catch (firebaseError) {
+        final fullName = [
+          appleCredential.givenName?.trim() ?? '',
+          appleCredential.familyName?.trim() ?? '',
+        ].where((e) => e.isNotEmpty).join(' ');
+        if (mounted) {
+          setState(() {
+            _applyLocalAuth(
+              providerId: 'apple.com',
+              userId: appleCredential.userIdentifier ??
+                  'apple-${DateTime.now().millisecondsSinceEpoch}',
+              email: appleCredential.email,
+              label: fullName.isNotEmpty ? fullName : appleCredential.email,
+            );
+          });
+        }
+        await _analytics.logEvent(
+          name: 'login_success',
+          parameters: {
+            'provider': 'apple_local',
+            'fallback_code': firebaseError.code,
+          },
+        );
+      }
     } on FirebaseAuthException catch (e) {
       await _analytics.logEvent(
         name: 'login_failure',
@@ -1143,27 +1384,51 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (!mounted) return;
     setState(() => _authWorking = true);
     try {
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (e) {
+        _log('GOOGLE SIGNOUT SKIPPED: $e');
+      }
       await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        setState(() {
+          _clearLocalAuth();
+          _guestMode = false;
+          _authUnlocked = false;
+          _authLabel = null;
+        });
+      }
     } finally {
       if (mounted) setState(() => _authWorking = false);
     }
   }
 
-  void _continueAsGuest() {
+  Future<void> _continueAsGuest() async {
     if (!mounted) return;
     setState(() {
+      _clearLocalAuth();
+      _authWorking = true;
       _guestMode = true;
       _authUnlocked = true;
       _authLabel = 'Guest';
     });
-    _analytics.logEvent(name: 'login_guest');
+    try {
+      if (FirebaseAuth.instance.currentUser != null) {
+        await FirebaseAuth.instance.signOut();
+      }
+      await _analytics.logEvent(name: 'login_guest');
+    } catch (e) {
+      _snack('Guest mode switch failed. $e');
+    } finally {
+      if (mounted) setState(() => _authWorking = false);
+    }
   }
 
   Widget _buildAuthGate() {
     final user = FirebaseAuth.instance.currentUser;
     final providerId = user?.providerData.isNotEmpty == true
         ? user!.providerData.first.providerId
-        : null;
+        : _localAuthProviderId;
     final googleSelected =
         _authUnlocked && !_guestMode && providerId == 'google.com';
     final appleSelected =

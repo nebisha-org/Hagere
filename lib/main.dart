@@ -21,6 +21,7 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
   await Hive.initFlutter();
   await EntitiesCache.open();
   final prefs = await SharedPreferences.getInstance();

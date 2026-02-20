@@ -261,8 +261,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     final categories = _extractCategories(e);
     final distance = _toDouble(e['distanceKm']);
     final showPostedDate = isPostedDateEntity(e);
-    final postedDateText =
-        showPostedDate ? (extractPostedDateText(e) ?? 'Unknown') : null;
+    final postedDateText = showPostedDate ? extractPostedDateText(e) : null;
     final lat = _lat(e);
     final lon = _lon(e);
     final images = _extractImages(e);

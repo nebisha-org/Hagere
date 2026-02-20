@@ -6,7 +6,6 @@ import '../state/providers.dart';
 import '../utils/geo.dart';
 import '../state/category_providers.dart';
 import '../state/location_name_provider.dart';
-import '../state/translation_provider.dart';
 import '../state/qc_mode.dart';
 import '../state/override_providers.dart';
 import 'add_listing_screen.dart';
@@ -14,6 +13,7 @@ import 'package:agerelige_flutter_client/widgets/add_listing_card.dart';
 import 'package:agerelige_flutter_client/widgets/promote_category_tile.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
+import 'package:agerelige_flutter_client/widgets/location_required_gate.dart';
 
 class _DeleteAuthPromptResult {
   final String deletedBy;
@@ -39,59 +39,70 @@ class EntitiesScreen extends ConsumerWidget {
     final result = await showDialog<_DeleteAuthPromptResult>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const TrText('Enter delete password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: deletedByCtrl,
-                autofocus: true,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Deleted by',
+        builder: (context, setState) {
+          final ready = deletedByCtrl.text.trim().isNotEmpty &&
+              passwordCtrl.text.trim().isNotEmpty;
+          return AlertDialog(
+            title: const TrText('Enter delete password'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: deletedByCtrl,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Deleted by',
+                  ),
+                  onChanged: (_) => setState(() {}),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: passwordCtrl,
-                obscureText: obscure,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  hintText: 'Password',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscure ? Icons.visibility : Icons.visibility_off,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: obscure,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    hintText: 'Password',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscure ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(() => obscure = !obscure),
                     ),
-                    onPressed: () => setState(() => obscure = !obscure),
                   ),
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) {
+                    if (!ready) return;
+                    Navigator.of(ctx).pop(
+                      _DeleteAuthPromptResult(
+                        deletedBy: deletedByCtrl.text.trim(),
+                        password: passwordCtrl.text.trim(),
+                      ),
+                    );
+                  },
                 ),
-                onSubmitted: (_) => Navigator.of(ctx).pop(
-                  _DeleteAuthPromptResult(
-                    deletedBy: deletedByCtrl.text.trim(),
-                    password: passwordCtrl.text.trim(),
-                  ),
-                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(null),
+                child: const TrText('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: ready
+                    ? () => Navigator.of(ctx).pop(
+                          _DeleteAuthPromptResult(
+                            deletedBy: deletedByCtrl.text.trim(),
+                            password: passwordCtrl.text.trim(),
+                          ),
+                        )
+                    : null,
+                child: const TrText('Continue'),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(null),
-              child: const TrText('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(
-                _DeleteAuthPromptResult(
-                  deletedBy: deletedByCtrl.text.trim(),
-                  password: passwordCtrl.text.trim(),
-                ),
-              ),
-              child: const TrText('Continue'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
     deletedByCtrl.dispose();
@@ -102,6 +113,7 @@ class EntitiesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final loc = ref.watch(effectiveLocationProvider);
+    final locationBlockReason = ref.watch(locationBlockReasonProvider);
     final locNameAsync = ref.watch(locationNameProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
@@ -246,7 +258,18 @@ class EntitiesScreen extends ConsumerWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: loc == null
-            ? const _LocationGate()
+            ? (locationBlockReason == null
+                ? const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 12),
+                        TrText('Getting your location...'),
+                      ],
+                    ),
+                  )
+                : const LocationRequiredGate())
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -485,35 +508,6 @@ class EntitiesScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-      ),
-    );
-  }
-}
-
-class _LocationGate extends ConsumerWidget {
-  const _LocationGate();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: ElevatedButton(
-        onPressed: () async {
-          try {
-            await ref.read(locationControllerProvider).ensureLocationReady();
-          } catch (e) {
-            if (context.mounted) {
-              final translator = ref.read(translationControllerProvider);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${translator.tr('Error:')} ${e.toString()}',
-                  ),
-                ),
-              );
-            }
-          }
-        },
-        child: const TrText('Enable Location'),
       ),
     );
   }

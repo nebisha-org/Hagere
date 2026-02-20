@@ -13,6 +13,7 @@ import 'add_listing_screen.dart';
 import 'place_detail_screen.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
+import 'package:agerelige_flutter_client/widgets/location_required_gate.dart';
 
 class _DeleteAuthPromptResult {
   final String deletedBy;
@@ -293,6 +294,7 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
   Widget build(BuildContext context) {
     final loc = ref.watch(effectiveLocationProvider);
     final entitiesAsync = ref.watch(entitiesProvider);
+    final locationBlockReason = ref.watch(locationBlockReasonProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final qcState = ref.watch(qcEditStateProvider);
 
@@ -313,16 +315,18 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
             : null,
       ),
       body: (loc?.latitude == null || loc?.longitude == null)
-          ? const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 12),
-                  TrText('Getting your location...'),
-                ],
-              ),
-            )
+          ? (locationBlockReason == null
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 12),
+                      TrText('Getting your location...'),
+                    ],
+                  ),
+                )
+              : const LocationRequiredGate())
           : entitiesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, _) => Center(
@@ -419,7 +423,7 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                                   selectedCategoryId: selectedCategory?.id,
                                 );
                                 final postedDateText = showPostedDate
-                                    ? (extractPostedDateText(raw) ?? 'Unknown')
+                                    ? extractPostedDateText(raw)
                                     : null;
                                 final entityId =
                                     (raw['id'] ?? raw['place_id'] ?? '')

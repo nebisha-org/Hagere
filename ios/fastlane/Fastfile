@@ -99,6 +99,9 @@ platform :ios do
       skip_metadata: true,
       skip_app_version_update: true,
       run_precheck_before_submit: false,
+      submission_information: {
+        export_compliance_uses_encryption: false
+      },
       submit_for_review: true,
       force: true
     )

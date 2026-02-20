@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.agereligeFlutterClient</string>
+	<string>com.digitalnebi.allhabesha</string>
 	<key>PROJECT_ID</key>
 	<string>hagere-663c4</string>
 	<key>STORAGE_BUCKET</key>
@@ -17,7 +17,7 @@
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
-	<false></false>
+	<true></true>
 	<key>IS_APPINVITE_ENABLED</key>
 	<true></true>
 	<key>IS_GCM_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:487886804143:ios:627f3a9802b91b10e6f05a</string>
+	<string>1:487886804143:ios:96838593027b872ee6f05a</string>
 </dict>
 </plist>

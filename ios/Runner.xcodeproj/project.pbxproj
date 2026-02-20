@@ -12,6 +12,7 @@
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		4C26597145AE52CB94080306 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA90E1CC049BE757D300D765 /* Pods_Runner.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+		74C2ECBB950CDF939DE82B4A /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7666D1D3A6C7904E267F8FEA /* GoogleService-Info.plist */; };
 		7658E7C0DEEF6BC288EE3370 /* libPods-RunnerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D806B13C428ED8764F699C3C /* libPods-RunnerTests.a */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
@@ -54,6 +55,7 @@
 		6BDB9ABBAE7205128B28C9AB /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		7666D1D3A6C7904E267F8FEA /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Runner/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -137,6 +139,7 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				00D54F3BEFF7C76B35A65C76 /* Pods */,
 				0C5B2EA597DA719874DCE30B /* Frameworks */,
+				7666D1D3A6C7904E267F8FEA /* GoogleService-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -264,6 +267,7 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+				74C2ECBB950CDF939DE82B4A /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -490,7 +494,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CODE_SIGN_IDENTITY = "Don’t Code Sign";
-				CURRENT_PROJECT_VERSION = 1770808113;
+				CURRENT_PROJECT_VERSION = 1770808124;
 				DEVELOPMENT_TEAM = 52X6NTR83E;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 52X6NTR83E;
 				ENABLE_BITCODE = NO;
@@ -515,7 +519,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1770808113;
+				CURRENT_PROJECT_VERSION = 1770808124;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.digitalnebi.allhabesha;
@@ -534,7 +538,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = 085AB27C49B804F588F03658B0D5C706F992BDEA;
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 1770808113;
+				CURRENT_PROJECT_VERSION = 1770808124;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 52X6NTR83E;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -553,7 +557,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1770808113;
+				CURRENT_PROJECT_VERSION = 1770808124;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.agereligeFlutterClient.RunnerTests;
@@ -683,7 +687,7 @@
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1770808113;
+				CURRENT_PROJECT_VERSION = 1770808124;
 				DEVELOPMENT_TEAM = 52X6NTR83E;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -712,7 +716,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = 085AB27C49B804F588F03658B0D5C706F992BDEA;
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 1770808113;
+				CURRENT_PROJECT_VERSION = 1770808124;
 				DEVELOPMENT_TEAM = 52X6NTR83E;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 52X6NTR83E;
 				ENABLE_BITCODE = NO;

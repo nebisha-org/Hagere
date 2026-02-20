@@ -1,8 +1,6 @@
-import '../config/env.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:location/location.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,19 +14,10 @@ import '../utils/category_filter.dart';
 import '../utils/geo.dart';
 import '../utils/posted_date.dart';
 import '../models/carousel_item.dart';
-import 'location_name_provider.dart';
 import 'translation_provider.dart';
 import 'override_providers.dart';
 import 'qc_city_provider.dart';
 import 'qc_mode.dart';
-
-const String _debugFallbackLatStr =
-    String.fromEnvironment('DEBUG_FALLBACK_LAT', defaultValue: '25.2048');
-const String _debugFallbackLonStr =
-    String.fromEnvironment('DEBUG_FALLBACK_LON', defaultValue: '55.2708');
-
-double _debugFallbackLat() => double.tryParse(_debugFallbackLatStr) ?? 25.2048;
-double _debugFallbackLon() => double.tryParse(_debugFallbackLonStr) ?? 55.2708;
 
 final entitiesApiProvider = Provider<EntitiesApi>((ref) {
   return EntitiesApi();
@@ -39,6 +28,15 @@ final carouselApiProvider = Provider<CarouselApi>((ref) {
 });
 
 final userLocationProvider = StateProvider<LocationData?>((ref) => null);
+
+enum LocationBlockReason {
+  serviceDisabled,
+  permissionDenied,
+  unavailable,
+}
+
+final locationBlockReasonProvider =
+    StateProvider<LocationBlockReason?>((ref) => null);
 
 LocationData _locationDataFromLatLon(double lat, double lon) {
   return LocationData.fromMap({
@@ -92,7 +90,6 @@ class EntitiesSyncDriver with WidgetsBindingObserver {
   }
 
   void _triggerRevalidate() {
-    ref.read(entitiesRefreshProvider.notifier).state++;
     ref.invalidate(entitiesRawProvider);
   }
 
@@ -135,30 +132,6 @@ final carouselItemsProvider =
 
   return api.fetchCarousel(lat: lat, lon: lon);
 });
-
-String? _normalizeCity(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return null;
-  return trimmed.toLowerCase();
-}
-
-String? _normalizeState(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return null;
-  const stateMap = {
-    'district of columbia': 'DC',
-    'washington, d.c.': 'DC',
-    'd.c.': 'DC',
-    'dc': 'DC',
-    'virginia': 'VA',
-    'va': 'VA',
-    'maryland': 'MD',
-    'md': 'MD',
-    'dubai': 'Dubai',
-  };
-  final key = trimmed.toLowerCase();
-  return stateMap[key] ?? trimmed;
-}
 
 final locationControllerProvider = Provider<LocationController>((ref) {
   return LocationController(ref);
@@ -220,13 +193,6 @@ class LocationController {
     }
   }
 
-  LocationData _locationFromLatLon(double lat, double lon) {
-    return LocationData.fromMap({
-      'latitude': lat,
-      'longitude': lon,
-    });
-  }
-
   Future<void> _saveLastLocation(LocationData loc) async {
     final lat = loc.latitude;
     final lon = loc.longitude;
@@ -236,32 +202,9 @@ class LocationController {
     await prefs.setDouble('last_location_lon', lon);
   }
 
-  Future<LocationData?> _loadFallbackLocation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lat = prefs.getDouble('last_location_lat');
-    final lon = prefs.getDouble('last_location_lon');
-    if (lat != null && lon != null) {
-      return _locationFromLatLon(lat, lon);
-    }
-
-    // Release-safe fallback: never leave the app blocked on a location spinner.
-    return _locationFromLatLon(_debugFallbackLat(), _debugFallbackLon());
-  }
-
-  Future<void> _updateFromLiveLocation({
-    Duration timeout = const Duration(seconds: 20),
-  }) async {
-    try {
-      final live = await _waitForLocation(timeout: timeout);
-      if (live.latitude == null || live.longitude == null) return;
-      await _saveLastLocation(live);
-      ref.read(userLocationProvider.notifier).state = live;
-    } catch (_) {
-      // ignore background attempt
-    }
-  }
-
   Future<void> ensureLocationReady() async {
+    ref.read(locationBlockReasonProvider.notifier).state = null;
+
     bool serviceEnabled = false;
     try {
       serviceEnabled = await _location.serviceEnabled();
@@ -277,15 +220,10 @@ class LocationController {
         // iOS may not allow programmatic service prompts.
       }
       if (!serviceEnabled) {
-        final fallback = await _loadFallbackLocation();
-        if (fallback != null) {
-          ref.read(userLocationProvider.notifier).state = fallback;
-          Future(() => _updateFromLiveLocation());
-          return;
-        }
-        if (!Platform.isIOS) {
-          throw Exception('Location service is disabled');
-        }
+        ref.read(locationBlockReasonProvider.notifier).state =
+            LocationBlockReason.serviceDisabled;
+        ref.read(userLocationProvider.notifier).state = null;
+        throw Exception('Location service is disabled');
       }
     }
 
@@ -306,12 +244,9 @@ class LocationController {
     }
 
     if (permission == PermissionStatus.deniedForever) {
-      final fallback = await _loadFallbackLocation();
-      if (fallback != null) {
-        ref.read(userLocationProvider.notifier).state = fallback;
-        Future(() => _updateFromLiveLocation());
-        return;
-      }
+      ref.read(locationBlockReasonProvider.notifier).state =
+          LocationBlockReason.permissionDenied;
+      ref.read(userLocationProvider.notifier).state = null;
       throw Exception(
         'Location permission permanently denied. Enable it in iOS Settings > Privacy > Location Services.',
       );
@@ -319,12 +254,9 @@ class LocationController {
 
     if (permission != PermissionStatus.granted &&
         permission != PermissionStatus.grantedLimited) {
-      final fallback = await _loadFallbackLocation();
-      if (fallback != null) {
-        ref.read(userLocationProvider.notifier).state = fallback;
-        Future(() => _updateFromLiveLocation());
-        return;
-      }
+      ref.read(locationBlockReasonProvider.notifier).state =
+          LocationBlockReason.permissionDenied;
+      ref.read(userLocationProvider.notifier).state = null;
       throw Exception('Location permission not granted: $permission');
     }
 
@@ -336,17 +268,9 @@ class LocationController {
 
     final loc = await _getLocationWithRetry();
     if (loc?.latitude == null || loc?.longitude == null) {
-      final fallback = await _loadFallbackLocation();
-      if (fallback != null) {
-        if (kDebugMode) {
-          debugPrint(
-            '[Location] fallback lat=${fallback.latitude} lon=${fallback.longitude}',
-          );
-        }
-        ref.read(userLocationProvider.notifier).state = fallback;
-        Future(() => _updateFromLiveLocation());
-        return;
-      }
+      ref.read(locationBlockReasonProvider.notifier).state =
+          LocationBlockReason.unavailable;
+      ref.read(userLocationProvider.notifier).state = null;
       throw Exception('Location unavailable (null lat/lon)');
     }
     await _saveLastLocation(loc!);
@@ -354,6 +278,7 @@ class LocationController {
       debugPrint('[Location] lat=${loc.latitude} lon=${loc.longitude}');
     }
 
+    ref.read(locationBlockReasonProvider.notifier).state = null;
     ref.read(userLocationProvider.notifier).state = loc;
   }
 }

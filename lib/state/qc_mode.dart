@@ -22,7 +22,9 @@ class QcEditState {
 }
 
 class QcEditStateController extends StateNotifier<QcEditState> {
-  QcEditStateController(this._prefs) : super(_load(_prefs));
+  QcEditStateController(this._prefs) : super(_load(_prefs)) {
+    _persist(state);
+  }
 
   static const _visibleKey = 'qc_edit_visible';
   static const _editingKey = 'qc_edit_enabled';
@@ -30,9 +32,8 @@ class QcEditStateController extends StateNotifier<QcEditState> {
   final SharedPreferences _prefs;
 
   static QcEditState _load(SharedPreferences prefs) {
-    final visible = prefs.getBool(_visibleKey) ?? false;
-    final editing = prefs.getBool(_editingKey) ?? false;
-    return QcEditState(visible: visible, editing: visible ? editing : false);
+    // Always boot with QC controls hidden and edit mode disabled.
+    return const QcEditState(visible: false, editing: false);
   }
 
   void _persist(QcEditState next) {
@@ -41,25 +42,25 @@ class QcEditStateController extends StateNotifier<QcEditState> {
   }
 
   void showControls() {
-    final next = const QcEditState(visible: true, editing: false);
+    const next = QcEditState(visible: true, editing: false);
     state = next;
     _persist(next);
   }
 
   void hideControls() {
-    final next = const QcEditState(visible: false, editing: false);
+    const next = QcEditState(visible: false, editing: false);
     state = next;
     _persist(next);
   }
 
   void startEditing() {
-    final next = const QcEditState(visible: true, editing: true);
+    const next = QcEditState(visible: true, editing: true);
     state = next;
     _persist(next);
   }
 
   void stopEditing() {
-    final next = const QcEditState(visible: true, editing: false);
+    const next = QcEditState(visible: true, editing: false);
     state = next;
     _persist(next);
   }
