@@ -16,6 +16,7 @@ Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch:
 - Do not code, release, or answer status questions until these are read.
 - First response in a new session must explicitly confirm these files were read.
 - If there is any conflict, `../START_HERE_ALLHABESHA.md` is the source of truth.
+- On every meaningful chat/status change, update shared documentation immediately for future agents.
 
 ## ✅ Latest updates (2026-02-13)
 - Google Play Console account type migration completed:
