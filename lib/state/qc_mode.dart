@@ -4,7 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'translation_provider.dart';
 
-const bool kQcMode = bool.fromEnvironment('QC_MODE', defaultValue: true);
+// QC tooling is enabled in non-release builds by default; release requires
+// an explicit --dart-define=QC_MODE=true opt-in.
+const bool kQcMode = bool.fromEnvironment(
+  'QC_MODE',
+  defaultValue: !kReleaseMode,
+);
 
 @immutable
 class QcEditState {
