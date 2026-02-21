@@ -259,7 +259,18 @@ jobs:
           security import "$RUNNER_TEMP/dist.p12" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/ci.mobileprovision"
+          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/ci.mobileprovision"
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+          security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/ci.mobileprovision.plist"
+          IOS_PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/ci.mobileprovision.plist")"
+          IOS_PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/ci.mobileprovision.plist")"
+          IOS_TEAM_ID="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/ci.mobileprovision.plist" | cut -d'.' -f1)"
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$IOS_PROFILE_UUID.mobileprovision"
+          {
+            echo "IOS_PROVISIONING_PROFILE_NAME=$IOS_PROFILE_NAME"
+            echo "IOS_PROVISIONING_PROFILE_UUID=$IOS_PROFILE_UUID"
+            echo "IOS_DEVELOPMENT_TEAM=$IOS_TEAM_ID"
+          } >> "$GITHUB_ENV"
 
       - name: Install CocoaPods
         run: |
@@ -273,6 +284,8 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
+          IOS_PROVISIONING_PROFILE_NAME: ${{ env.IOS_PROVISIONING_PROFILE_NAME }}
+          IOS_DEVELOPMENT_TEAM: ${{ env.IOS_DEVELOPMENT_TEAM }}
           CI_WAIT_FOR_TESTFLIGHT_PROCESSING: "1"
         run: |
           cd ios
