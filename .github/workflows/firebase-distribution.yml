@@ -181,7 +181,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
-          bundler-cache: true
+          bundler-cache: false
           working-directory: ios
 
       - name: Install Flutter dependencies
@@ -227,8 +227,9 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd ios
+          bundle config set path vendor/bundle
           bundle install
-          bundle exec pod install
+          LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install
 
       - name: Upload canonical iOS build to TestFlight
         env:
@@ -296,8 +297,14 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
-          bundler-cache: true
+          bundler-cache: false
           working-directory: ios
+
+      - name: Install iOS Ruby gems for promotion
+        run: |
+          cd ios
+          bundle config set path vendor/bundle
+          bundle install
 
       - name: Validate production promotion secrets
         env:
