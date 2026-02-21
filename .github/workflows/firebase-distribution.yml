@@ -189,15 +189,13 @@ jobs:
 
       - name: Validate iOS release secrets
         env:
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 || secrets.IOS_MOBILEPROVISION_BASE64 }}
         run: |
           missing=0
-          for name in ASC_ISSUER_ID ASC_KEY_ID ASC_KEY_CONTENT_BASE64 IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64; do
+          for name in ASC_KEY_CONTENT_BASE64 IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64; do
             if [[ -z "${!name}" ]]; then
               echo "Missing required secret: $name"
               missing=1
@@ -211,7 +209,7 @@ jobs:
         env:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 || secrets.IOS_MOBILEPROVISION_BASE64 }}
           IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
         run: |
           KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
@@ -304,12 +302,10 @@ jobs:
       - name: Validate production promotion secrets
         env:
           PLAY_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
         run: |
           missing=0
-          for name in PLAY_SERVICE_ACCOUNT_JSON_BASE64 ASC_ISSUER_ID ASC_KEY_ID ASC_KEY_CONTENT_BASE64; do
+          for name in PLAY_SERVICE_ACCOUNT_JSON_BASE64 ASC_KEY_CONTENT_BASE64; do
             if [[ -z "${!name}" ]]; then
               echo "Missing required secret: $name"
               missing=1

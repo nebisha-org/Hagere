@@ -61,7 +61,7 @@ Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch:
   5. Production promotion from exact CI artifact/build only (no rebuild).
 - Required repo secrets:
   - Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_PASSWORD`, `KEY_ALIAS`, `FIREBASE_ANDROID_APP_ID`, `FIREBASE_TOKEN`, `PLAY_SERVICE_ACCOUNT_JSON_BASE64`
-  - iOS: `ASC_ISSUER_ID`, `ASC_KEY_ID`, `ASC_KEY_CONTENT_BASE64`, `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64` (optional `IOS_KEYCHAIN_PASSWORD`)
+  - iOS: `ASC_ISSUER_ID`, `ASC_KEY_ID`, `ASC_KEY_CONTENT_BASE64`, `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, and provisioning profile secret (`IOS_PROVISIONING_PROFILE_BASE64` or legacy `IOS_MOBILEPROVISION_BASE64`) (optional `IOS_KEYCHAIN_PASSWORD`)
 
 ## 📁 AllHabesha repo map
 - Frontend: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client
