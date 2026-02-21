@@ -123,7 +123,19 @@ jobs:
       - name: Capture Android build metadata
         id: android_meta
         run: |
-          ANDROID_VERSION_CODE="$(jq -r '.elements[0].versionCode' build/app/outputs/flutter-apk/output-metadata.json)"
+          METADATA_PATH=""
+          if [[ -f "build/app/outputs/flutter-apk/output-metadata.json" ]]; then
+            METADATA_PATH="build/app/outputs/flutter-apk/output-metadata.json"
+          elif [[ -f "build/app/outputs/apk/release/output-metadata.json" ]]; then
+            METADATA_PATH="build/app/outputs/apk/release/output-metadata.json"
+          fi
+
+          if [[ -n "$METADATA_PATH" ]]; then
+            ANDROID_VERSION_CODE="$(jq -r '.elements[0].versionCode' "$METADATA_PATH")"
+          else
+            ANDROID_VERSION_CODE="$BUILD_NUMBER"
+          fi
+
           echo "android_version_code=$ANDROID_VERSION_CODE" >> "$GITHUB_OUTPUT"
           mkdir -p ci_meta
           cat > ci_meta/android_manifest.json <<EOF
@@ -155,6 +167,7 @@ jobs:
             build/app/outputs/bundle/release/app-release.aab
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/flutter-apk/output-metadata.json
+            build/app/outputs/apk/release/output-metadata.json
             ci_meta/android_manifest.json
           retention-days: 14
 
