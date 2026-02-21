@@ -1,6 +1,6 @@
 # AGENTS.md — Hagere / agerelige_flutter_client (V2)
 
-Date: 2026-01-29
+Date: 2026-02-21
 Owner: Nebyate Endalamaw
 Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch: v2)
 
@@ -40,6 +40,28 @@ Repo: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client (branch:
 ## ✅ Priority (must follow)
 - Focus on **fast release**. Avoid extra commentary or scope beyond the current focus.
 - After every code fix, run the app on the iOS simulator (`flutter run -d "iPhone 16e"`) before reporting completion.
+
+## ✅ Android Device-Test Flow (2026-02-21)
+- CI workflow runs Firebase automated device tests:
+  - `.github/workflows/firebase-distribution.yml`
+- Device matrix file:
+  - `scripts/firebase_test_devices_android.txt`
+- Root release orchestration (outside this repo folder):
+  - `../scripts/release_android_production_with_test_lab.sh`
+  - `../scripts/run_firebase_test_lab_smoke.sh`
+
+## ✅ Canonical Push-to-Prod Flow (2026-02-21)
+- Every push to `v2`/`main` runs:
+  - `.github/workflows/firebase-distribution.yml`
+- This workflow now enforces:
+  1. One shared CI build number for Android+iOS.
+  2. Android Firebase App Distribution + automated device tests.
+  3. iOS TestFlight upload/distribution from CI.
+  4. Manual `production` environment approval before promotion.
+  5. Production promotion from exact CI artifact/build only (no rebuild).
+- Required repo secrets:
+  - Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_PASSWORD`, `KEY_ALIAS`, `FIREBASE_ANDROID_APP_ID`, `FIREBASE_TOKEN`, `PLAY_SERVICE_ACCOUNT_JSON_BASE64`
+  - iOS: `ASC_ISSUER_ID`, `ASC_KEY_ID`, `ASC_KEY_CONTENT_BASE64`, `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64` (optional `IOS_KEYCHAIN_PASSWORD`)
 
 ## 📁 AllHabesha repo map
 - Frontend: /Users/nebsha/FlutterProjects/AllHabesha/agerelige_flutter_client

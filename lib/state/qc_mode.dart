@@ -61,7 +61,8 @@ class QcEditStateController extends StateNotifier<QcEditState> {
   }
 
   void stopEditing() {
-    const next = QcEditState(visible: true, editing: false);
+    // Keep QC state binary to avoid lingering partially-visible UI.
+    const next = QcEditState(visible: false, editing: false);
     state = next;
     _persist(next);
   }
