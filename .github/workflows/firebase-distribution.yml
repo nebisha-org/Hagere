@@ -82,17 +82,29 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Resolve Firebase Android app ID
+        id: firebase_android_app
+        env:
+          FIREBASE_ANDROID_APP_ID_SECRET: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+        run: |
+          APP_ID_FROM_JSON="$(jq -r '.client[] | select(.client_info.android_client_info.package_name=="com.digitalnebi.allhabesha") | .client_info.mobilesdk_app_id' android/app/google-services.json | head -n1)"
+          FIREBASE_ANDROID_APP_ID="${FIREBASE_ANDROID_APP_ID_SECRET:-$APP_ID_FROM_JSON}"
+          if [[ -z "$FIREBASE_ANDROID_APP_ID" || "$FIREBASE_ANDROID_APP_ID" == "null" ]]; then
+            echo "Unable to resolve Firebase Android app id for com.digitalnebi.allhabesha"
+            exit 1
+          fi
+          echo "firebase_android_app_id=$FIREBASE_ANDROID_APP_ID" >> "$GITHUB_OUTPUT"
+
       - name: Validate Android release secrets
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          FIREBASE_ANDROID_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           missing=0
-          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_PASSWORD KEY_ALIAS FIREBASE_ANDROID_APP_ID FIREBASE_TOKEN; do
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_PASSWORD KEY_ALIAS FIREBASE_TOKEN; do
             if [[ -z "${!name}" ]]; then
               echo "Missing required secret: $name"
               missing=1
@@ -154,7 +166,7 @@ jobs:
       - name: Distribute to Firebase testers + automated device tests
         run: |
           firebase --project "$FIREBASE_PROJECT_ID" appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk \
-            --app "${{ secrets.FIREBASE_ANDROID_APP_ID }}" \
+            --app "${{ steps.firebase_android_app.outputs.firebase_android_app_id }}" \
             --token "${{ secrets.FIREBASE_TOKEN }}" \
             --groups "$FIREBASE_TESTER_GROUPS" \
             --test-devices-file scripts/firebase_test_devices_android.txt

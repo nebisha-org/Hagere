@@ -706,35 +706,33 @@
 			};
 			name = Debug;
 		};
-		97C147071CF9000F007C117D /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = 085AB27C49B804F588F03658B0D5C706F992BDEA;
-				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 1770808124;
-				DEVELOPMENT_TEAM = 52X6NTR83E;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 52X6NTR83E;
-				ENABLE_BITCODE = NO;
-				INFOPLIST_FILE = Runner/Info.plist;
+			97C147071CF9000F007C117D /* Release */ = {
+				isa = XCBuildConfiguration;
+				baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+				buildSettings = {
+					ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+					CLANG_ENABLE_MODULES = YES;
+					CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
+					CODE_SIGN_IDENTITY = "Apple Distribution";
+					CODE_SIGN_STYLE = Automatic;
+					CURRENT_PROJECT_VERSION = 1770808124;
+					DEVELOPMENT_TEAM = 52X6NTR83E;
+					"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 52X6NTR83E;
+					ENABLE_BITCODE = NO;
+					INFOPLIST_FILE = Runner/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.digitalnebi.allhabesha;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE = "449eb506-a7ae-4d01-b76c-8a6a2bac7457";
-				PROVISIONING_PROFILE_SPECIFIER = "449eb506-a7ae-4d01-b76c-8a6a2bac7457";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "449eb506-a7ae-4d01-b76c-8a6a2bac7457";
-				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
-				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				VERSIONING_SYSTEM = "apple-generic";
-			};
+					);
+					PRODUCT_BUNDLE_IDENTIFIER = com.digitalnebi.allhabesha;
+					PRODUCT_NAME = "$(TARGET_NAME)";
+					PROVISIONING_PROFILE_SPECIFIER = "";
+					"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "";
+					SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+					SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+					SWIFT_VERSION = 5.0;
+					VERSIONING_SYSTEM = "apple-generic";
+				};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
