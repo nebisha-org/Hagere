@@ -154,6 +154,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   @override
   void initState() {
     super.initState();
+    if (kQcMode) {
+      // Enforce owner intent on launch: keep QC enabled, but hidden/non-editing
+      // until the 6-second title long-press is used.
+      ref.read(qcEditStateProvider.notifier).hideControls();
+    }
     Future(() async {
       try {
         await ref.read(locationControllerProvider).ensureLocationReady();
