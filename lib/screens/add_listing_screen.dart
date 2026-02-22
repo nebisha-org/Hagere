@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -685,11 +686,13 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     final requestedPaymentType = ref.read(paymentTypeProvider);
     final requestedStripeMode = ref.read(stripeModeProvider);
     final qcState = ref.read(qcEditStateProvider);
-    final qcActive = kQcMode && (qcState.visible || qcState.editing);
-    final paymentType = qcActive
+    final qcCanOverrideMonetization =
+        !kReleaseMode && kQcMode && qcState.editing;
+    final paymentType = qcCanOverrideMonetization
         ? requestedPaymentType
         : PaymentType.subscription;
-    final stripeMode = qcActive ? requestedStripeMode : StripeMode.live;
+    final stripeMode =
+        qcCanOverrideMonetization ? requestedStripeMode : StripeMode.live;
 
     final checkoutBaseUrl = paymentType == PaymentType.subscription
         ? subscriptionPaymentsBaseUrl
@@ -716,7 +719,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     _log('CHECKOUT: POST $uri');
     _log(
-        'CHECKOUT QC ACTIVE: $qcActive (requested=${requestedPaymentType.name}/${requestedStripeMode.name}, effective=${paymentType.name}/${stripeMode.name})');
+        'CHECKOUT QC OVERRIDE: $qcCanOverrideMonetization (requested=${requestedPaymentType.name}/${requestedStripeMode.name}, effective=${paymentType.name}/${stripeMode.name})');
     _log('CHECKOUT MODE: ${paymentType.name}');
     _log('CHECKOUT BASE URL: $checkoutBaseUrl');
     _log('CHECKOUT BODY: ${jsonEncode(payload)}');
@@ -1598,8 +1601,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     final AppCategory? selected = ref.watch(selectedCategoryProvider);
     final requestedPaymentType = ref.watch(paymentTypeProvider);
     final qcState = ref.watch(qcEditStateProvider);
-    final qcActive = kQcMode && (qcState.visible || qcState.editing);
-    final paymentType = qcActive
+    final qcCanOverrideMonetization =
+        !kReleaseMode && kQcMode && qcState.editing;
+    final paymentType = qcCanOverrideMonetization
         ? requestedPaymentType
         : PaymentType.subscription;
     final selectedResolved = selected == null
