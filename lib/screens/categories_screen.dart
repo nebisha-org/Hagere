@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,11 +40,21 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   static const Duration _qcLongPressDuration = Duration(seconds: 6);
   late final ProviderSubscription<AsyncValue<String>> _locationNameSub;
 
+  Future<void> _enforceHiddenQcMonetizationDefaults() async {
+    // Owner intent: when QC is hidden, user-facing payment behavior stays
+    // on safe defaults (Subscription + Live) without requiring restart.
+    await ref
+        .read(paymentTypeProvider.notifier)
+        .setType(PaymentType.subscription);
+    await ref.read(stripeModeProvider.notifier).setMode(StripeMode.live);
+  }
+
   void _cycleQcState() {
     final qcState = ref.read(qcEditStateProvider);
     final notifier = ref.read(qcEditStateProvider.notifier);
     if (qcState.visible || qcState.editing) {
       notifier.hideControls();
+      unawaited(_enforceHiddenQcMonetizationDefaults());
       return;
     }
     notifier.startEditing();
@@ -158,6 +170,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       // Enforce owner intent on launch: keep QC enabled, but hidden/non-editing
       // until the 6-second title long-press is used.
       ref.read(qcEditStateProvider.notifier).hideControls();
+      unawaited(_enforceHiddenQcMonetizationDefaults());
     }
     Future(() async {
       try {
