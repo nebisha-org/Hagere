@@ -11,7 +11,7 @@ class LocationRequiredGate extends ConsumerWidget {
   const LocationRequiredGate({super.key});
 
   static const String _message =
-      'This app wont operate properly with out enableing location service';
+      'Please provide location for this application to work properly.';
 
   Future<void> _openSettings(BuildContext context, WidgetRef ref) async {
     var opened = false;

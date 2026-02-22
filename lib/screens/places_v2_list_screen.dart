@@ -295,6 +295,7 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
     final loc = ref.watch(effectiveLocationProvider);
     final entitiesAsync = ref.watch(entitiesProvider);
     final locationBlockReason = ref.watch(locationBlockReasonProvider);
+    final showLocationGate = isHardLocationBlock(locationBlockReason);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final qcState = ref.watch(qcEditStateProvider);
 
@@ -315,18 +316,35 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
             : null,
       ),
       body: (loc?.latitude == null || loc?.longitude == null)
-          ? (locationBlockReason == null
-              ? const Center(
+          ? (showLocationGate
+              ? const LocationRequiredGate()
+              : Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 12),
-                      TrText('Getting your location...'),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 12),
+                      const TrText('Getting your location...'),
+                      if (locationBlockReason ==
+                          LocationBlockReason.unavailable)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              try {
+                                await ref
+                                    .read(locationControllerProvider)
+                                    .ensureLocationReady();
+                              } catch (_) {
+                                // Keep loading; hard blocks render gate.
+                              }
+                            },
+                            child: const TrText('Retry location'),
+                          ),
+                        ),
                     ],
                   ),
-                )
-              : const LocationRequiredGate())
+                ))
           : entitiesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, _) => Center(

@@ -202,6 +202,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
     final carouselAsync = ref.watch(carouselItemsProvider);
     final locationBlockReason = ref.watch(locationBlockReasonProvider);
+    final showLocationGate = isHardLocationBlock(locationBlockReason);
     final appTitle = ref.watch(resolvedAppTitleProvider);
     final appTitleWidget = QcEditableText(
       appTitle,
@@ -242,18 +243,34 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             ),
           ],
         ),
-        body: locationBlockReason == null
-            ? const Center(
+        body: showLocationGate
+            ? const LocationRequiredGate()
+            : Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 12),
-                    TrText('Getting your location...'),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 12),
+                    const TrText('Getting your location...'),
+                    if (locationBlockReason == LocationBlockReason.unavailable)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            try {
+                              await ref
+                                  .read(locationControllerProvider)
+                                  .ensureLocationReady();
+                            } catch (_) {
+                              // Keep loading state; hard blocks show gate.
+                            }
+                          },
+                          child: const TrText('Retry location'),
+                        ),
+                      ),
                   ],
                 ),
-              )
-            : const LocationRequiredGate(),
+              ),
       );
     }
 

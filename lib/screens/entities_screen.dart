@@ -114,6 +114,7 @@ class EntitiesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final loc = ref.watch(effectiveLocationProvider);
     final locationBlockReason = ref.watch(locationBlockReasonProvider);
+    final showLocationGate = isHardLocationBlock(locationBlockReason);
     final locNameAsync = ref.watch(locationNameProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
@@ -258,18 +259,35 @@ class EntitiesScreen extends ConsumerWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: loc == null
-            ? (locationBlockReason == null
-                ? const Center(
+            ? (showLocationGate
+                ? const LocationRequiredGate()
+                : Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 12),
-                        TrText('Getting your location...'),
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 12),
+                        const TrText('Getting your location...'),
+                        if (locationBlockReason ==
+                            LocationBlockReason.unavailable)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: OutlinedButton(
+                              onPressed: () async {
+                                try {
+                                  await ref
+                                      .read(locationControllerProvider)
+                                      .ensureLocationReady();
+                                } catch (_) {
+                                  // Keep loading; hard blocks render gate.
+                                }
+                              },
+                              child: const TrText('Retry location'),
+                            ),
+                          ),
                       ],
                     ),
-                  )
-                : const LocationRequiredGate())
+                  ))
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

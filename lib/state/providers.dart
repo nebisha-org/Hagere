@@ -35,6 +35,11 @@ enum LocationBlockReason {
   unavailable,
 }
 
+bool isHardLocationBlock(LocationBlockReason? reason) {
+  return reason == LocationBlockReason.serviceDisabled ||
+      reason == LocationBlockReason.permissionDenied;
+}
+
 final locationBlockReasonProvider =
     StateProvider<LocationBlockReason?>((ref) => null);
 
@@ -202,6 +207,28 @@ class LocationController {
     await prefs.setDouble('last_location_lon', lon);
   }
 
+  Future<LocationData?> _loadLastLocation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lat = prefs.getDouble('last_location_lat');
+      final lon = prefs.getDouble('last_location_lon');
+      if (lat == null || lon == null) return null;
+      return _locationDataFromLatLon(lat, lon);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _applyLocation(LocationData loc, {String? source}) {
+    ref.read(locationBlockReasonProvider.notifier).state = null;
+    ref.read(userLocationProvider.notifier).state = loc;
+    if (kDebugMode && source != null) {
+      debugPrint(
+        '[Location] using $source lat=${loc.latitude} lon=${loc.longitude}',
+      );
+    }
+  }
+
   Future<void> ensureLocationReady() async {
     ref.read(locationBlockReasonProvider.notifier).state = null;
 
@@ -220,6 +247,11 @@ class LocationController {
         // iOS may not allow programmatic service prompts.
       }
       if (!serviceEnabled) {
+        final fallback = await _loadLastLocation();
+        if (fallback != null) {
+          _applyLocation(fallback, source: 'cached-location');
+          return;
+        }
         ref.read(locationBlockReasonProvider.notifier).state =
             LocationBlockReason.serviceDisabled;
         ref.read(userLocationProvider.notifier).state = null;
@@ -268,6 +300,11 @@ class LocationController {
 
     final loc = await _getLocationWithRetry();
     if (loc?.latitude == null || loc?.longitude == null) {
+      final fallback = await _loadLastLocation();
+      if (fallback != null) {
+        _applyLocation(fallback, source: 'cached-location');
+        return;
+      }
       ref.read(locationBlockReasonProvider.notifier).state =
           LocationBlockReason.unavailable;
       ref.read(userLocationProvider.notifier).state = null;
@@ -278,8 +315,7 @@ class LocationController {
       debugPrint('[Location] lat=${loc.latitude} lon=${loc.longitude}');
     }
 
-    ref.read(locationBlockReasonProvider.notifier).state = null;
-    ref.read(userLocationProvider.notifier).state = loc;
+    _applyLocation(loc);
   }
 }
 
