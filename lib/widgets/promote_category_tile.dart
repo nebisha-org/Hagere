@@ -5,6 +5,7 @@ import '../services/payments_api.dart';
 import '../services/checkout_launcher.dart';
 import '../state/payment_type_provider.dart';
 import '../state/stripe_mode_provider.dart';
+import '../state/qc_mode.dart';
 import '../widgets/tr_text.dart';
 import '../state/translation_provider.dart';
 
@@ -80,8 +81,14 @@ class _PromoteCategoryTileState extends ConsumerState<PromoteCategoryTile> {
   Future<void> _onPromote() async {
     setState(() => _loading = true);
     try {
-      final stripeMode = ref.read(stripeModeProvider);
-      final paymentType = ref.read(paymentTypeProvider);
+      final requestedStripeMode = ref.read(stripeModeProvider);
+      final requestedPaymentType = ref.read(paymentTypeProvider);
+      final qcState = ref.read(qcEditStateProvider);
+      final qcActive = kQcMode && (qcState.visible || qcState.editing);
+      final stripeMode = qcActive ? requestedStripeMode : StripeMode.live;
+      final paymentType = qcActive
+          ? requestedPaymentType
+          : PaymentType.subscription;
       final checkoutBaseUrl = paymentType == PaymentType.subscription
           ? subscriptionPaymentsBaseUrl
           : widget.paymentsBaseUrl;

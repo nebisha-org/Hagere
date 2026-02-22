@@ -175,6 +175,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     Future(() async {
       try {
         await ref.read(locationControllerProvider).ensureLocationReady();
+        if (!mounted) return;
+        // Warm entities cache while user is on home so first list open is faster.
+        unawaited(
+          ref.read(entitiesRawProvider.future).catchError((_) {
+            // Non-blocking warm-up only.
+            return <Map<String, dynamic>>[];
+          }),
+        );
       } catch (_) {
         // ignore on home; detail screens will surface if needed
       }

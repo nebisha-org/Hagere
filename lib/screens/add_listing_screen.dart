@@ -22,6 +22,7 @@ import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
 import '../state/payment_type_provider.dart';
 import '../state/stripe_mode_provider.dart';
+import '../state/qc_mode.dart';
 import '../state/translation_provider.dart';
 import '../services/posted_entities_store.dart';
 import '../widgets/tr_text.dart';
@@ -259,12 +260,20 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     }
   }
 
-  bool _isIosGoogleClientConfigError(Object error) {
+  bool _isGoogleClientConfigError(Object error) {
+    if (error is GoogleSignInException) {
+      return error.code == GoogleSignInExceptionCode.clientConfigurationError ||
+          error.code == GoogleSignInExceptionCode.providerConfigurationError;
+    }
     final msg = error.toString().toLowerCase();
     return msg.contains('no active configuration') ||
         msg.contains('gidclientid') ||
         msg.contains('clientconfigurationerror') ||
         msg.contains('providerconfigurationerror');
+  }
+
+  bool _isIosGoogleClientConfigError(Object error) {
+    return _isGoogleClientConfigError(error);
   }
 
   bool _isFirebaseAuthCancellation(FirebaseAuthException e) {
@@ -673,7 +682,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   }
 
   Future<void> _startCheckout({required String entityId}) async {
-    final paymentType = ref.read(paymentTypeProvider);
+    final requestedPaymentType = ref.read(paymentTypeProvider);
+    final requestedStripeMode = ref.read(stripeModeProvider);
+    final qcState = ref.read(qcEditStateProvider);
+    final qcActive = kQcMode && (qcState.visible || qcState.editing);
+    final paymentType = qcActive
+        ? requestedPaymentType
+        : PaymentType.subscription;
+    final stripeMode = qcActive ? requestedStripeMode : StripeMode.live;
+
     final checkoutBaseUrl = paymentType == PaymentType.subscription
         ? subscriptionPaymentsBaseUrl
         : paymentsBaseUrl;
@@ -681,7 +698,6 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         ? '/payments/subscription-checkout-session'
         : '/payments/checkout-session';
     final uri = Uri.parse('$checkoutBaseUrl$checkoutPath');
-    final stripeMode = ref.read(stripeModeProvider);
     final stripeModeValue = stripeMode == StripeMode.test ? 'test' : 'live';
     final promotionTier = widget.origin == AddListingOrigin.categoryList
         ? 'categoryFeatured'
@@ -699,6 +715,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     };
 
     _log('CHECKOUT: POST $uri');
+    _log(
+        'CHECKOUT QC ACTIVE: $qcActive (requested=${requestedPaymentType.name}/${requestedStripeMode.name}, effective=${paymentType.name}/${stripeMode.name})');
     _log('CHECKOUT MODE: ${paymentType.name}');
     _log('CHECKOUT BASE URL: $checkoutBaseUrl');
     _log('CHECKOUT BODY: ${jsonEncode(payload)}');
@@ -1265,13 +1283,19 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
       await finishWithNativeGoogle();
     } on GoogleSignInException catch (e) {
-      if (Platform.isIOS && _isIosGoogleClientConfigError(e)) {
-        _snack(
-          'Google sign-in iOS config is incomplete. Try again after Firebase Google provider setup.',
+      if (_isGoogleClientConfigError(e)) {
+        await _activateLocalGoogleFallback();
+        await _analytics.logEvent(
+          name: 'login_success',
+          parameters: {
+            'provider': Platform.isIOS
+                ? 'google_local_missing_ios_config'
+                : 'google_local_missing_android_config',
+          },
         );
-      } else {
-        _snack(_googleErrorMessage(e));
+        return;
       }
+      _snack(_googleErrorMessage(e));
       await _analytics.logEvent(
         name: 'login_failure',
         parameters: {'provider': 'google', 'code': e.code.name},
@@ -1572,7 +1596,12 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     final List<AppCategory> categories = ref.watch(resolvedCategoriesProvider);
     final AppCategory? selected = ref.watch(selectedCategoryProvider);
-    final paymentType = ref.watch(paymentTypeProvider);
+    final requestedPaymentType = ref.watch(paymentTypeProvider);
+    final qcState = ref.watch(qcEditStateProvider);
+    final qcActive = kQcMode && (qcState.visible || qcState.editing);
+    final paymentType = qcActive
+        ? requestedPaymentType
+        : PaymentType.subscription;
     final selectedResolved = selected == null
         ? null
         : categories.firstWhere(
