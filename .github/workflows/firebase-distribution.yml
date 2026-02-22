@@ -401,8 +401,22 @@ jobs:
           ASC_APP_VERSION: ${{ needs.prepare.outputs.app_version }}
           ASC_BUILD_NUMBER: ${{ needs.prepare.outputs.ci_build_number }}
         run: |
+          set +e
           cd ios
-          bundle exec fastlane ios submit_ci_build_for_review
+          bundle exec fastlane ios submit_ci_build_for_review 2>&1 | tee /tmp/ios_submit_for_review.log
+          status=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$status" -ne 0 ]]; then
+            if grep -Eq "A relationship value is not acceptable for the current resource state|The specified pre-release build could not be added|Cannot submit for review - A review submission is already in progress" /tmp/ios_submit_for_review.log; then
+              echo "::warning::iOS submit skipped due to existing App Store Connect review/submission state."
+              echo "IOS_SUBMIT_STATE=skipped_existing_submission_state" >> "$GITHUB_ENV"
+            else
+              exit "$status"
+            fi
+          else
+            echo "IOS_SUBMIT_STATE=submitted" >> "$GITHUB_ENV"
+          fi
 
       - name: Summarize canonical promotion
         run: |
@@ -412,4 +426,5 @@ jobs:
             echo "- CI build number: \`${{ needs.prepare.outputs.ci_build_number }}\`"
             echo "- Android versionCode: \`${{ needs.android_build_distribute.outputs.android_version_code }}\`"
             echo "- iOS build number: \`${{ needs.prepare.outputs.ci_build_number }}\`"
+            echo "- iOS submit state: \`${IOS_SUBMIT_STATE:-unknown}\`"
           } >> "$GITHUB_STEP_SUMMARY"
