@@ -203,6 +203,10 @@ jobs:
       CI_BUILD_NUMBER: ${{ needs.prepare.outputs.ci_build_number }}
       TESTFLIGHT_GROUPS: ${{ vars.TESTFLIGHT_GROUPS || '' }}
       TESTFLIGHT_NOTIFY_EXTERNAL: ${{ vars.TESTFLIGHT_NOTIFY_EXTERNAL || '0' }}
+      IOS_OTA_S3_BUCKET: ${{ vars.IOS_OTA_S3_BUCKET || 'agerelige-user-images1' }}
+      IOS_OTA_S3_KEY: ${{ vars.IOS_OTA_S3_KEY || 'allhabesha/ios/Runner_1770808126.ipa' }}
+      IOS_OTA_AWS_REGION: ${{ vars.IOS_OTA_AWS_REGION || 'us-east-2' }}
+      IOS_OTA_INSTALL_URL: ${{ vars.IOS_OTA_INSTALL_URL || 'https://www.digitalnebi.com/allhabesha.html' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -247,6 +251,7 @@ jobs:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 || secrets.IOS_MOBILEPROVISION_BASE64 }}
+          IOS_ADHOC_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_ADHOC_PROVISIONING_PROFILE_BASE64 || '' }}
           IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
         run: |
           KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
@@ -271,6 +276,25 @@ jobs:
             echo "IOS_PROVISIONING_PROFILE_UUID=$IOS_PROFILE_UUID"
             echo "IOS_DEVELOPMENT_TEAM=$IOS_TEAM_ID"
           } >> "$GITHUB_ENV"
+          if [[ -n "${IOS_ADHOC_PROVISIONING_PROFILE_BASE64:-}" ]]; then
+            ADHOC_PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/ci_adhoc.mobileprovision"
+            echo "$IOS_ADHOC_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$ADHOC_PROFILE_PATH"
+            security cms -D -i "$ADHOC_PROFILE_PATH" > "$RUNNER_TEMP/ci_adhoc.mobileprovision.plist"
+            IOS_ADHOC_PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/ci_adhoc.mobileprovision.plist")"
+            IOS_ADHOC_PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/ci_adhoc.mobileprovision.plist")"
+            cp "$ADHOC_PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$IOS_ADHOC_PROFILE_UUID.mobileprovision"
+            {
+              echo "IOS_ADHOC_PROVISIONING_PROFILE_NAME=$IOS_ADHOC_PROFILE_NAME"
+              echo "IOS_ADHOC_PROVISIONING_PROFILE_UUID=$IOS_ADHOC_PROFILE_UUID"
+              echo "IOS_OTA_PROFILE_READY=1"
+            } >> "$GITHUB_ENV"
+          else
+            {
+              echo "IOS_ADHOC_PROVISIONING_PROFILE_NAME="
+              echo "IOS_ADHOC_PROVISIONING_PROFILE_UUID="
+              echo "IOS_OTA_PROFILE_READY=0"
+            } >> "$GITHUB_ENV"
+          fi
 
       - name: Install CocoaPods
         run: |
@@ -291,14 +315,63 @@ jobs:
           cd ios
           bundle exec fastlane ios beta
 
+      - name: Build Ad Hoc IPA for OTA install
+        if: env.IOS_OTA_PROFILE_READY == '1'
+        env:
+          IOS_ADHOC_PROVISIONING_PROFILE_NAME: ${{ env.IOS_ADHOC_PROVISIONING_PROFILE_NAME }}
+          IOS_DEVELOPMENT_TEAM: ${{ env.IOS_DEVELOPMENT_TEAM }}
+          CI_BUILD_NUMBER: ${{ env.CI_BUILD_NUMBER }}
+          IOS_SKIP_BUILD_NUMBER_INCREMENT: "1"
+        run: |
+          cd ios
+          bundle exec fastlane ios adhoc_ipa
+
+      - name: Configure AWS credentials for OTA IPA publish
+        if: env.IOS_OTA_PROFILE_READY == '1' && secrets.IOS_OTA_AWS_ACCESS_KEY_ID != '' && secrets.IOS_OTA_AWS_SECRET_ACCESS_KEY != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.IOS_OTA_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.IOS_OTA_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.IOS_OTA_AWS_REGION }}
+
+      - name: Publish Ad Hoc IPA to stable OTA path
+        if: env.IOS_OTA_PROFILE_READY == '1' && secrets.IOS_OTA_AWS_ACCESS_KEY_ID != '' && secrets.IOS_OTA_AWS_SECRET_ACCESS_KEY != ''
+        run: |
+          aws s3 cp ios/Runner-AdHoc.ipa "s3://${IOS_OTA_S3_BUCKET}/${IOS_OTA_S3_KEY}" \
+            --content-type application/octet-stream \
+            --cache-control no-store
+          {
+            echo "### iOS OTA Link Updated"
+            echo "- Install page: \`${IOS_OTA_INSTALL_URL}\`"
+            echo "- Artifact: \`s3://${IOS_OTA_S3_BUCKET}/${IOS_OTA_S3_KEY}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Note OTA publish prerequisites
+        if: env.IOS_OTA_PROFILE_READY != '1' || secrets.IOS_OTA_AWS_ACCESS_KEY_ID == '' || secrets.IOS_OTA_AWS_SECRET_ACCESS_KEY == ''
+        run: |
+          {
+            echo "### iOS OTA Link Not Updated In This Run"
+            echo "- Required secrets:"
+            echo "  - IOS_ADHOC_PROVISIONING_PROFILE_BASE64"
+            echo "  - IOS_OTA_AWS_ACCESS_KEY_ID"
+            echo "  - IOS_OTA_AWS_SECRET_ACCESS_KEY"
+            echo "- Target install page: \`${IOS_OTA_INSTALL_URL}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Capture iOS build metadata
         run: |
+          OTA_PUBLISHED="false"
+          if [[ -f "ios/Runner-AdHoc.ipa" ]]; then
+            OTA_PUBLISHED="true"
+          fi
           mkdir -p ci_meta
           cat > ci_meta/ios_manifest.json <<EOF
           {
             "ci_build_number": "${CI_BUILD_NUMBER}",
             "app_version": "${{ needs.prepare.outputs.app_version }}",
             "bundle_id": "com.digitalnebi.allhabesha",
+            "ota_install_url": "${IOS_OTA_INSTALL_URL}",
+            "ota_published": ${OTA_PUBLISHED},
             "commit_sha": "${GITHUB_SHA}",
             "run_id": "${GITHUB_RUN_ID}"
           }
