@@ -129,8 +129,38 @@ jobs:
 
       - name: Build Android AAB + APK
         run: |
-          flutter build appbundle --release --build-number "$BUILD_NUMBER"
-          flutter build apk --release --build-number "$BUILD_NUMBER"
+          run_android_release_builds() {
+            flutter build appbundle --release --build-number "$BUILD_NUMBER"
+            flutter build apk --release --build-number "$BUILD_NUMBER"
+          }
+
+          set +e
+          run_android_release_builds 2>&1 | tee /tmp/android_build_attempt1.log
+          build_status=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$build_status" -ne 0 ]]; then
+            echo "::warning::Android release build failed on first attempt. Retrying once after clean."
+            flutter clean
+            flutter pub get
+            set +e
+            run_android_release_builds 2>&1 | tee /tmp/android_build_attempt2.log
+            build_status=${PIPESTATUS[0]}
+            set -e
+          fi
+
+          if [[ "$build_status" -ne 0 ]]; then
+            {
+              echo "=== Android build attempt 1 (tail) ==="
+              tail -n 120 /tmp/android_build_attempt1.log
+              echo
+              echo "=== Android build attempt 2 (tail) ==="
+              tail -n 120 /tmp/android_build_attempt2.log
+            } > /tmp/android_build_failure_tail.log
+            cat /tmp/android_build_failure_tail.log
+            echo "::error::Android release build failed after retry. See android-build-debug-logs artifact."
+            exit 1
+          fi
 
       - name: Capture Android build metadata
         id: android_meta
@@ -193,6 +223,18 @@ jobs:
             build/app/outputs/flutter-apk/output-metadata.json
             build/app/outputs/apk/release/output-metadata.json
             ci_meta/android_manifest.json
+          retention-days: 14
+
+      - name: Upload Android build debug logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-debug-logs
+          path: |
+            /tmp/android_build_attempt1.log
+            /tmp/android_build_attempt2.log
+            /tmp/android_build_failure_tail.log
+          if-no-files-found: ignore
           retention-days: 14
 
   ios_build_distribute:
