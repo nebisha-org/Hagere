@@ -374,9 +374,14 @@ jobs:
             ${{ runner.os }}-cocoapods-
 
       - name: Install CocoaPods
-        if: env.IOS_OTA_PROFILE_AVAILABLE == '1' && steps.cocoapods_cache.outputs.cache-hit != 'true'
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         run: |
           cd ios
+          if [[ "${{ steps.cocoapods_cache.outputs.cache-hit }}" == "true" ]] && [[ -f "Pods/Manifest.lock" ]] && cmp -s "Podfile.lock" "Pods/Manifest.lock"; then
+            echo "CocoaPods sandbox already in sync. Skipping pod install."
+            exit 0
+          fi
+
           set +e
           LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install --deployment
           status=$?
