@@ -201,6 +201,7 @@ jobs:
     runs-on: macos-latest
     env:
       CI_BUILD_NUMBER: ${{ needs.prepare.outputs.ci_build_number }}
+      IOS_ENABLE_TESTFLIGHT: ${{ vars.IOS_ENABLE_TESTFLIGHT || '0' }}
       TESTFLIGHT_GROUPS: ${{ vars.TESTFLIGHT_GROUPS || '' }}
       TESTFLIGHT_NOTIFY_EXTERNAL: ${{ vars.TESTFLIGHT_NOTIFY_EXTERNAL || '0' }}
       IOS_OTA_S3_BUCKET: ${{ vars.IOS_OTA_S3_BUCKET || 'agerelige-user-images1' }}
@@ -306,6 +307,7 @@ jobs:
           LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install
 
       - name: Upload canonical iOS build to TestFlight
+        if: env.IOS_ENABLE_TESTFLIGHT == '1'
         id: upload_testflight
         continue-on-error: true
         env:
@@ -425,7 +427,7 @@ jobs:
           retention-days: 14
 
       - name: Enforce TestFlight upload success
-        if: always() && steps.upload_testflight.outcome == 'failure'
+        if: always() && env.IOS_ENABLE_TESTFLIGHT == '1' && steps.upload_testflight.outcome == 'failure'
         run: |
           echo "TestFlight upload failed in this run."
           exit 1
