@@ -58,6 +58,20 @@ class _QcStarRatingState extends ConsumerState<QcStarRating> {
   late int _stars;
   bool _saving = false;
 
+  String get _resolvedEntityId {
+    final explicit = widget.entityId.trim();
+    if (explicit.isNotEmpty) return explicit;
+    return (widget.raw['id'] ??
+            widget.raw['place_id'] ??
+            widget.raw['entityId'] ??
+            widget.raw['placeId'] ??
+            widget.raw['item_id'] ??
+            widget.raw['itemId'] ??
+            '')
+        .toString()
+        .trim();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -67,17 +81,16 @@ class _QcStarRatingState extends ConsumerState<QcStarRating> {
   @override
   void didUpdateWidget(covariant QcStarRating oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.raw != widget.raw) {
-      _stars = habeshaUsageStarsFromEntity(widget.raw);
+    final nextStars = habeshaUsageStarsFromEntity(widget.raw);
+    if (!_saving && nextStars != _stars) {
+      _stars = nextStars;
     }
   }
 
   Future<void> _setStars(int next) async {
     final qc = ref.read(qcEditStateProvider);
-    if (!kQcMode ||
-        !qc.visible ||
-        !qc.editing ||
-        widget.entityId.trim().isEmpty) {
+    final entityId = _resolvedEntityId;
+    if (!kQcMode || !qc.visible || !qc.editing || entityId.isEmpty) {
       return;
     }
     final normalized = _clampStars(next);
@@ -92,7 +105,7 @@ class _QcStarRatingState extends ConsumerState<QcStarRating> {
 
       await api.upsertOverride(
         entityType: 'entity',
-        entityId: widget.entityId,
+        entityId: entityId,
         fieldKey: kHabeshaUsageStarsFieldKey,
         locale: locale,
         value: normalized.toString(),
@@ -100,7 +113,7 @@ class _QcStarRatingState extends ConsumerState<QcStarRating> {
       );
 
       await EntitiesCache.applyOverrideToAll(
-        entityId: widget.entityId,
+        entityId: entityId,
         fieldKey: kHabeshaUsageStarsFieldKey,
         value: normalized.toString(),
         locale: locale,
@@ -127,11 +140,13 @@ class _QcStarRatingState extends ConsumerState<QcStarRating> {
 
   @override
   Widget build(BuildContext context) {
+    final resolvedStars = habeshaUsageStarsFromEntity(widget.raw);
+    if (!_saving && resolvedStars != _stars) {
+      _stars = resolvedStars;
+    }
     final qc = ref.watch(qcEditStateProvider);
-    final canEdit = kQcMode &&
-        qc.visible &&
-        qc.editing &&
-        widget.entityId.trim().isNotEmpty;
+    final entityId = _resolvedEntityId;
+    final canEdit = kQcMode && qc.visible && qc.editing && entityId.isNotEmpty;
     if (!canEdit && _stars <= 0) return const SizedBox.shrink();
 
     return Wrap(

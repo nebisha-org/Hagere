@@ -71,6 +71,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -244,6 +245,7 @@ jobs:
     env:
       CI_BUILD_NUMBER: ${{ needs.prepare.outputs.ci_build_number }}
       IOS_ENABLE_TESTFLIGHT: ${{ vars.IOS_ENABLE_TESTFLIGHT || '0' }}
+      IOS_OTA_PROFILE_AVAILABLE: ${{ secrets.IOS_ADHOC_PROVISIONING_PROFILE_BASE64 != '' && '1' || '0' }}
       TESTFLIGHT_GROUPS: ${{ vars.TESTFLIGHT_GROUPS || '' }}
       TESTFLIGHT_NOTIFY_EXTERNAL: ${{ vars.TESTFLIGHT_NOTIFY_EXTERNAL || '0' }}
       IOS_OTA_S3_BUCKET: ${{ vars.IOS_OTA_S3_BUCKET || 'agerelige-user-images1' }}
@@ -265,24 +267,26 @@ jobs:
           cache: true
 
       - name: Set up Ruby
+        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
-          bundler-cache: false
+          bundler-cache: true
           working-directory: ios
 
       - name: Install Flutter dependencies
+        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
         run: flutter pub get
 
       - name: Validate iOS release secrets
+        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
         env:
-          ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 || secrets.IOS_MOBILEPROVISION_BASE64 }}
         run: |
           missing=0
-          for name in ASC_KEY_CONTENT_BASE64 IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64; do
+          for name in IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64; do
             if [[ -z "${!name}" ]]; then
               echo "Missing required secret: $name"
               missing=1
@@ -292,7 +296,26 @@ jobs:
             exit 1
           fi
 
+      - name: Validate TestFlight credentials
+        if: env.IOS_ENABLE_TESTFLIGHT == '1'
+        env:
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
+        run: |
+          missing=0
+          for name in ASC_ISSUER_ID ASC_KEY_ID ASC_KEY_CONTENT_BASE64; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required TestFlight secret: $name"
+              missing=1
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
       - name: Configure iOS signing keychain and profile
+        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
         env:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
@@ -343,10 +366,9 @@ jobs:
           fi
 
       - name: Install CocoaPods
+        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
         run: |
           cd ios
-          bundle config set path vendor/bundle
-          bundle install
           LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install
 
       - name: Upload canonical iOS build to TestFlight
@@ -527,14 +549,13 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
-          bundler-cache: false
+          bundler-cache: true
           working-directory: ios
 
       - name: Install iOS Ruby gems for promotion
         run: |
           cd ios
-          bundle config set path vendor/bundle
-          bundle install
+          bundle check || bundle install
 
       - name: Validate production promotion secrets
         env:

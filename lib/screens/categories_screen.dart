@@ -17,6 +17,7 @@ import '../state/qc_city_provider.dart';
 import '../state/override_providers.dart';
 import '../state/favorites_provider.dart';
 import '../models/carousel_item.dart';
+import '../utils/category_filter.dart';
 
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
 import 'package:agerelige_flutter_client/widgets/add_listing_carousel.dart';
@@ -220,6 +221,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     ref.invalidate(homeSponsoredProvider);
     final loc = ref.watch(effectiveLocationProvider);
     final catsAsync = ref.watch(availableCategoriesProvider);
+    final rawEntitiesAsync = ref.watch(entitiesRawProvider);
     final entityIdAsync = ref.watch(currentEntityIdProvider);
     final sponsoredAsync = ref.watch(homeSponsoredProvider);
     final carouselAsync = ref.watch(carouselItemsProvider);
@@ -354,7 +356,21 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           ),
         ),
         data: (cats) {
-          final displayCats = [kFavoritesCategory, ...cats];
+          final hasRawEntities = rawEntitiesAsync.hasValue;
+          final rawEntities = rawEntitiesAsync.maybeWhen(
+            data: (items) => items,
+            orElse: () => const <Map<String, dynamic>>[],
+          );
+          final categoryItems = hasRawEntities
+              ? cats
+                  .where(
+                    (c) => rawEntities.any(
+                      (e) => matchesCategoryForEntity(e, c),
+                    ),
+                  )
+                  .toList()
+              : cats;
+          final displayCats = [...categoryItems, kFavoritesCategory];
           // rows:
           // 0                => Language toggle
           // 0..cats.length-1 => categories

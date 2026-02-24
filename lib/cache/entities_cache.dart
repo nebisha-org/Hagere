@@ -144,9 +144,25 @@ class EntitiesCache {
   }
 
   static bool _matchesEntity(Map<dynamic, dynamic> item, String entityId) {
-    final id =
-        item['id'] ?? item['entityId'] ?? item['item_id'] ?? item['itemId'];
-    return id?.toString() == entityId;
+    final target = entityId.trim();
+    if (target.isEmpty) return false;
+    const keys = [
+      'id',
+      'entityId',
+      'place_id',
+      'placeId',
+      'item_id',
+      'itemId',
+      'SK',
+      'PK',
+    ];
+    for (final key in keys) {
+      final candidate = item[key]?.toString().trim() ?? '';
+      if (candidate.isNotEmpty && candidate == target) {
+        return true;
+      }
+    }
+    return false;
   }
 
   static bool _setPathValue(
