@@ -306,6 +306,8 @@ jobs:
           LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install
 
       - name: Upload canonical iOS build to TestFlight
+        id: upload_testflight
+        continue-on-error: true
         env:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -421,6 +423,12 @@ jobs:
           name: ios-release-manifest
           path: ci_meta/ios_manifest.json
           retention-days: 14
+
+      - name: Enforce TestFlight upload success
+        if: always() && steps.upload_testflight.outcome == 'failure'
+        run: |
+          echo "TestFlight upload failed in this run."
+          exit 1
 
   promote_production:
     name: Manual Approval -> Promote Exact CI Build
