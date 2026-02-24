@@ -356,6 +356,7 @@ jobs:
         if: steps.ota_publish_ready.outputs.ready == '1'
         run: |
           aws s3 cp ios/Runner-AdHoc.ipa "s3://${IOS_OTA_S3_BUCKET}/${IOS_OTA_S3_KEY}" \
+            --metadata "ci_build_number=${CI_BUILD_NUMBER}" \
             --content-type application/octet-stream \
             --cache-control no-store
           {
