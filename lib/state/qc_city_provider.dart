@@ -21,7 +21,21 @@ class QcCityOption {
   final String? state;
 }
 
+const String qcCurrentDeviceLocationKey = 'current_device_location';
+
+bool qcCityUsesCurrentDeviceLocation(String? key) {
+  return key == qcCurrentDeviceLocationKey;
+}
+
 const List<QcCityOption> qcCityOptions = [
+  QcCityOption(
+    key: qcCurrentDeviceLocationKey,
+    label: 'Current device location',
+    city: 'Near you',
+    lat: 0,
+    lon: 0,
+    state: null,
+  ),
   QcCityOption(
     key: 'alexandria_va',
     label: 'Alexandria, VA',
@@ -65,8 +79,7 @@ QcCityOption? qcCityOptionForKey(String? key) {
 }
 
 class QcCityOverrideController extends StateNotifier<String?> {
-  QcCityOverrideController(this._prefs)
-      : super(_prefs.getString(_prefsKey));
+  QcCityOverrideController(this._prefs) : super(_prefs.getString(_prefsKey));
 
   static const _prefsKey = 'qc_city_override';
 

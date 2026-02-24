@@ -7,7 +7,7 @@ import 'qc_mode.dart';
 
 final locationNameProvider = FutureProvider<String>((ref) async {
   final qcCityKey = ref.watch(qcCityOverrideProvider);
-  if (kQcMode) {
+  if (kQcMode && !qcCityUsesCurrentDeviceLocation(qcCityKey)) {
     final option = qcCityOptionForKey(qcCityKey);
     if (option != null) return option.label;
   }
