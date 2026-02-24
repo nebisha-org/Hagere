@@ -89,15 +89,74 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     return cats.toSet().toList();
   }
 
+  List<String> _weekdayLinesFromList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .map((v) => _str(v))
+        .where((s) => s.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  String? _weekdayTextFromString(String raw) {
+    if (raw.isEmpty) return null;
+    final dayLine = RegExp(
+      r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):\s*[^,\]]+',
+      caseSensitive: false,
+    );
+    final lines = dayLine
+        .allMatches(raw)
+        .map((m) => (m.group(0) ?? '').trim())
+        .where((s) => s.isNotEmpty)
+        .toList(growable: false);
+    if (lines.isEmpty) return null;
+    return lines.join('\n');
+  }
+
+  String? _normalizeOpeningHours(dynamic value) {
+    if (value == null) return null;
+
+    if (value is Map) {
+      final weekdayLines = _weekdayLinesFromList(value['weekday_text']);
+      if (weekdayLines.isNotEmpty) return weekdayLines.join('\n');
+
+      final fromMapString = _weekdayTextFromString(_str(value));
+      if (fromMapString != null) return fromMapString;
+
+      final fallback = _str(value['text'] ?? value['display']);
+      return fallback.isEmpty ? null : fallback;
+    }
+
+    final weekdayLines = _weekdayLinesFromList(value);
+    if (weekdayLines.isNotEmpty) return weekdayLines.join('\n');
+
+    final raw = _str(value);
+    if (raw.isEmpty) return null;
+
+    final looksStructured = raw.contains('weekday_text') ||
+        (raw.startsWith('{') &&
+            raw.contains('open_now') &&
+            raw.contains('periods'));
+
+    if (looksStructured) {
+      final parsed = _weekdayTextFromString(raw);
+      return parsed;
+    }
+
+    return raw;
+  }
+
   String? _openingHours(Map<String, dynamic> e) {
-    final direct = _str(e['opening_hours']);
-    if (direct.isNotEmpty) return direct;
+    final direct = _normalizeOpeningHours(e['opening_hours']) ??
+        _normalizeOpeningHours(e['openingHours']);
+    if (direct != null && direct.isNotEmpty) return direct;
+
     final raw = e['raw'];
     if (raw is Map) {
       final tags = raw['tags'];
       if (tags is Map) {
-        final hours = _str(tags['opening_hours']);
-        return hours.isEmpty ? null : hours;
+        final hours = _normalizeOpeningHours(tags['opening_hours']) ??
+            _normalizeOpeningHours(tags['openingHours']);
+        if (hours != null && hours.isNotEmpty) return hours;
       }
     }
     return null;
