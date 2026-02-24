@@ -376,7 +376,14 @@ jobs:
         if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         run: |
           cd ios
+          set +e
           LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install --deployment
+          status=$?
+          set -e
+          if [[ "$status" -ne 0 ]]; then
+            echo "::warning::pod install --deployment failed due lock drift. Retrying with regular pod install."
+            LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install
+          fi
 
       - name: Build Ad Hoc IPA for OTA install
         if: env.IOS_OTA_PROFILE_READY == '1'
