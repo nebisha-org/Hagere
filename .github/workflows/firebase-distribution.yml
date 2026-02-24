@@ -247,15 +247,12 @@ jobs:
           retention-days: 14
 
   ios_build_distribute:
-    name: iOS Build + TestFlight Distribution
+    name: iOS Build + OTA Publish
     needs: prepare
     runs-on: macos-latest
     env:
       CI_BUILD_NUMBER: ${{ needs.prepare.outputs.ci_build_number }}
-      IOS_ENABLE_TESTFLIGHT: ${{ vars.IOS_ENABLE_TESTFLIGHT || '0' }}
       IOS_OTA_PROFILE_AVAILABLE: ${{ secrets.IOS_ADHOC_PROVISIONING_PROFILE_BASE64 != '' && '1' || '0' }}
-      TESTFLIGHT_GROUPS: ${{ vars.TESTFLIGHT_GROUPS || '' }}
-      TESTFLIGHT_NOTIFY_EXTERNAL: ${{ vars.TESTFLIGHT_NOTIFY_EXTERNAL || '0' }}
       IOS_OTA_S3_BUCKET: ${{ vars.IOS_OTA_S3_BUCKET || 'agerelige-user-images1' }}
       IOS_OTA_S3_KEY: ${{ vars.IOS_OTA_S3_KEY || 'allhabesha/ios/Runner_1770808126.ipa' }}
       IOS_OTA_AWS_REGION: ${{ vars.IOS_OTA_AWS_REGION || 'us-east-2' }}
@@ -275,7 +272,7 @@ jobs:
           cache: true
 
       - name: Cache Dart pub packages
-        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         uses: actions/cache@v4
         with:
           path: ~/.pub-cache
@@ -284,7 +281,7 @@ jobs:
             ${{ runner.os }}-pub-
 
       - name: Set up Ruby
-        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
@@ -292,11 +289,11 @@ jobs:
           working-directory: ios
 
       - name: Install Flutter dependencies
-        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         run: flutter pub get
 
       - name: Validate iOS release secrets
-        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         env:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
@@ -313,26 +310,8 @@ jobs:
             exit 1
           fi
 
-      - name: Validate TestFlight credentials
-        if: env.IOS_ENABLE_TESTFLIGHT == '1'
-        env:
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
-        run: |
-          missing=0
-          for name in ASC_ISSUER_ID ASC_KEY_ID ASC_KEY_CONTENT_BASE64; do
-            if [[ -z "${!name}" ]]; then
-              echo "Missing required TestFlight secret: $name"
-              missing=1
-            fi
-          done
-          if [[ "$missing" -ne 0 ]]; then
-            exit 1
-          fi
-
       - name: Configure iOS signing keychain and profile
-        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         env:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
@@ -383,7 +362,7 @@ jobs:
           fi
 
       - name: Cache CocoaPods
-        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         uses: actions/cache@v4
         with:
           path: |
@@ -394,25 +373,10 @@ jobs:
             ${{ runner.os }}-cocoapods-
 
       - name: Install CocoaPods
-        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1'
         run: |
           cd ios
           LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install --deployment
-
-      - name: Upload canonical iOS build to TestFlight
-        if: env.IOS_ENABLE_TESTFLIGHT == '1'
-        id: upload_testflight
-        continue-on-error: true
-        env:
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
-          IOS_PROVISIONING_PROFILE_NAME: ${{ env.IOS_PROVISIONING_PROFILE_NAME }}
-          IOS_DEVELOPMENT_TEAM: ${{ env.IOS_DEVELOPMENT_TEAM }}
-          CI_WAIT_FOR_TESTFLIGHT_PROCESSING: "1"
-        run: |
-          cd ios
-          bundle exec fastlane ios beta
 
       - name: Build Ad Hoc IPA for OTA install
         if: env.IOS_OTA_PROFILE_READY == '1'
@@ -534,12 +498,6 @@ jobs:
           name: ios-release-manifest
           path: ci_meta/ios_manifest.json
           retention-days: 14
-
-      - name: Enforce TestFlight upload success
-        if: always() && env.IOS_ENABLE_TESTFLIGHT == '1' && steps.upload_testflight.outcome == 'failure'
-        run: |
-          echo "TestFlight upload failed in this run."
-          exit 1
 
   promote_production:
     name: Manual Approval -> Promote Exact CI Build
