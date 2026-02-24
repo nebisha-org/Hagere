@@ -80,6 +80,14 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Cache Dart pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -266,6 +274,15 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Cache Dart pub packages
+        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
       - name: Set up Ruby
         if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
         uses: ruby/setup-ruby@v1
@@ -365,11 +382,22 @@ jobs:
             } >> "$GITHUB_ENV"
           fi
 
+      - name: Cache CocoaPods
+        if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cocoapods-
+
       - name: Install CocoaPods
         if: env.IOS_ENABLE_TESTFLIGHT == '1' || env.IOS_OTA_PROFILE_AVAILABLE == '1'
         run: |
           cd ios
-          LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install
+          LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install --deployment
 
       - name: Upload canonical iOS build to TestFlight
         if: env.IOS_ENABLE_TESTFLIGHT == '1'
