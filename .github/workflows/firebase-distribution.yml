@@ -207,6 +207,8 @@ jobs:
       IOS_OTA_S3_KEY: ${{ vars.IOS_OTA_S3_KEY || 'allhabesha/ios/Runner_1770808126.ipa' }}
       IOS_OTA_AWS_REGION: ${{ vars.IOS_OTA_AWS_REGION || 'us-east-2' }}
       IOS_OTA_INSTALL_URL: ${{ vars.IOS_OTA_INSTALL_URL || 'https://www.digitalnebi.com/allhabesha.html' }}
+      IOS_OTA_EMAIL_FROM: ${{ vars.IOS_OTA_EMAIL_FROM || 'apple@digitalnebi.com' }}
+      IOS_OTA_EMAIL_TO: ${{ vars.IOS_OTA_EMAIL_TO || 'nebyate@gmail.com' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -358,6 +360,29 @@ jobs:
             echo "- Artifact: \`s3://${IOS_OTA_S3_BUCKET}/${IOS_OTA_S3_KEY}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Email iOS OTA install link
+        if: steps.ota_publish_ready.outputs.ready == '1' && env.IOS_OTA_EMAIL_TO != '' && env.IOS_OTA_EMAIL_FROM != ''
+        run: |
+          set +e
+          aws sesv2 send-email \
+            --region "${IOS_OTA_AWS_REGION}" \
+            --from-email-address "${IOS_OTA_EMAIL_FROM}" \
+            --destination "ToAddresses=${IOS_OTA_EMAIL_TO}" \
+            --content "Simple={Subject={Data=\"AllHabesha iOS install link updated (${CI_BUILD_NUMBER})\"},Body={Text={Data=\"Open this on iPhone Safari:\\n${IOS_OTA_INSTALL_URL}\\n\\nDirect files:\\nhttps://www.digitalnebi.com/allhabesha.plist\\nhttps://www.digitalnebi.com/allhabesha.ipa\\n\\nBuild: ${CI_BUILD_NUMBER}\\nCommit: ${GITHUB_SHA}\"}}}" \
+            | tee /tmp/ios_ota_email_send.json
+          status=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$status" -ne 0 ]]; then
+            echo "::warning::OTA email send failed."
+          else
+            message_id="$(jq -r '.MessageId // empty' /tmp/ios_ota_email_send.json 2>/dev/null || true)"
+            {
+              echo "- OTA email sent to: \`${IOS_OTA_EMAIL_TO}\`"
+              echo "- OTA email MessageId: \`${message_id:-unknown}\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Note OTA publish prerequisites
         if: steps.ota_publish_ready.outputs.ready != '1'
         run: |
@@ -368,6 +393,7 @@ jobs:
             echo "  - IOS_OTA_AWS_ACCESS_KEY_ID"
             echo "  - IOS_OTA_AWS_SECRET_ACCESS_KEY"
             echo "- Target install page: \`${IOS_OTA_INSTALL_URL}\`"
+            echo "- OTA email target: \`${IOS_OTA_EMAIL_TO}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Capture iOS build metadata
