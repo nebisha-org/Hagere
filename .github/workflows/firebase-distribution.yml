@@ -249,6 +249,7 @@ jobs:
       IOS_OTA_S3_BUCKET: ${{ vars.IOS_OTA_S3_BUCKET || 'agerelige-user-images1' }}
       IOS_OTA_S3_KEY: ${{ vars.IOS_OTA_S3_KEY || 'allhabesha/ios/Runner_1770808126.ipa' }}
       IOS_OTA_AWS_REGION: ${{ vars.IOS_OTA_AWS_REGION || 'us-east-2' }}
+      IOS_OTA_EMAIL_AWS_REGION: ${{ vars.IOS_OTA_EMAIL_AWS_REGION || 'us-east-1' }}
       IOS_OTA_INSTALL_URL: ${{ vars.IOS_OTA_INSTALL_URL || 'https://www.digitalnebi.com/allhabesha.html' }}
       IOS_OTA_EMAIL_FROM: ${{ vars.IOS_OTA_EMAIL_FROM || 'apple@digitalnebi.com' }}
       IOS_OTA_EMAIL_TO: ${{ vars.IOS_OTA_EMAIL_TO || 'nebyate@gmail.com' }}
@@ -427,7 +428,7 @@ jobs:
 
           set +e
           aws sesv2 send-email \
-            --region "${IOS_OTA_AWS_REGION}" \
+            --region "${IOS_OTA_EMAIL_AWS_REGION}" \
             --from-email-address "${IOS_OTA_EMAIL_FROM}" \
             --destination "ToAddresses=${IOS_OTA_EMAIL_TO}" \
             --content "${email_content}" \
