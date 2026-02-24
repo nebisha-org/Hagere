@@ -603,7 +603,7 @@ jobs:
           set -e
 
           if [[ "$status" -ne 0 ]]; then
-            if grep -Eq "A relationship value is not acceptable for the current resource state|The specified pre-release build could not be added|Cannot submit for review - A review submission is already in progress" /tmp/ios_submit_for_review.log; then
+            if grep -Eq "A relationship value is not acceptable for the current resource state|The specified pre-release build could not be added|Cannot submit for review - A review submission is already in progress|Cannot submit for review - could not find an editable version for 'IOS'" /tmp/ios_submit_for_review.log; then
               echo "::warning::iOS submit skipped due to existing App Store Connect review/submission state."
               echo "IOS_SUBMIT_STATE=skipped_existing_submission_state" >> "$GITHUB_ENV"
             else
