@@ -14,6 +14,7 @@ import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import '../state/qc_mode.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_image.dart';
+import 'package:agerelige_flutter_client/widgets/qc_star_rating.dart';
 
 class PlaceDetailScreen extends ConsumerStatefulWidget {
   const PlaceDetailScreen({super.key, required this.entity});
@@ -262,10 +263,13 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
     final distance = _toDouble(e['distanceKm']);
     final showPostedDate = isPostedDateEntity(e);
     final postedDateText = showPostedDate ? extractPostedDateText(e) : null;
+    final usageStars = habeshaUsageStarsFromEntity(e);
     final lat = _lat(e);
     final lon = _lon(e);
     final images = _extractImages(e);
     final qcState = ref.watch(qcEditStateProvider);
+    final showUsageStars =
+        usageStars > 0 || (kQcMode && qcState.visible && qcState.editing);
 
     return Scaffold(
       body: CustomScrollView(
@@ -415,7 +419,8 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                   if (postedDateText != null ||
                       hours != null ||
                       categories.isNotEmpty ||
-                      distance != null)
+                      distance != null ||
+                      showUsageStars)
                     _InfoCard(
                       title: 'Details',
                       children: [
@@ -442,6 +447,10 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                             icon: Icons.near_me,
                             text: '${distance.toStringAsFixed(2)} km away',
                           ),
+                        QcStarRating(
+                          entityId: entityId,
+                          raw: e,
+                        ),
                         if (categories.isNotEmpty)
                           Wrap(
                             spacing: 8,
@@ -508,7 +517,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                                   final coord = '$lat,$lon';
                                   Clipboard.setData(ClipboardData(text: coord));
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
+                                    const SnackBar(
                                       content: TrText('Coordinates copied'),
                                     ),
                                   );

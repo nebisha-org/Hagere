@@ -9,10 +9,12 @@ import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/qc_mode.dart';
 import '../utils/posted_date.dart';
+import '../utils/geo.dart';
 import 'add_listing_screen.dart';
 import 'place_detail_screen.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
+import 'package:agerelige_flutter_client/widgets/qc_star_rating.dart';
 import 'package:agerelige_flutter_client/widgets/location_required_gate.dart';
 
 class _DeleteAuthPromptResult {
@@ -67,6 +69,7 @@ class PlacesV2ListScreen extends ConsumerStatefulWidget {
 class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
   final TextEditingController _filterCtrl = TextEditingController();
   String _filterQuery = '';
+  static const double _metersToMiles = 0.000621371;
 
   @override
   void initState() {
@@ -290,6 +293,27 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
     }
   }
 
+  String? _distanceFromYouLabel({
+    required Map<String, dynamic> raw,
+    required double? userLat,
+    required double? userLon,
+  }) {
+    if (userLat == null || userLon == null) return null;
+
+    final itemLat = extractCoord(raw, 'lat');
+    final itemLon = extractCoord(raw, 'lon');
+    if (itemLat == null || itemLon == null) return null;
+
+    final miles = distanceMeters(
+          lat1: userLat,
+          lon1: userLon,
+          lat2: itemLat,
+          lon2: itemLon,
+        ) *
+        _metersToMiles;
+    return '${miles.toStringAsFixed(1)} miles from you';
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = ref.watch(effectiveLocationProvider);
@@ -443,6 +467,11 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                                 final postedDateText = showPostedDate
                                     ? extractPostedDateText(raw)
                                     : null;
+                                final distanceFromYou = _distanceFromYouLabel(
+                                  raw: raw,
+                                  userLat: loc?.latitude,
+                                  userLon: loc?.longitude,
+                                );
                                 final entityId =
                                     (raw['id'] ?? raw['place_id'] ?? '')
                                         .toString();
@@ -500,6 +529,19 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                                               .textTheme
                                               .labelSmall,
                                         ),
+                                      if (distanceFromYou != null)
+                                        Text(
+                                          distanceFromYou,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall,
+                                        ),
+                                      QcStarRating(
+                                        entityId: entityId,
+                                        raw: raw,
+                                        showLabel: false,
+                                        iconSize: 15,
+                                      ),
                                     ],
                                   ),
                                   trailing: e.phone.isEmpty
