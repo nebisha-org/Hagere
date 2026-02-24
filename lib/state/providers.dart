@@ -18,6 +18,7 @@ import 'translation_provider.dart';
 import 'override_providers.dart';
 import 'qc_city_provider.dart';
 import 'qc_mode.dart';
+import 'favorites_provider.dart';
 
 final entitiesApiProvider = Provider<EntitiesApi>((ref) {
   return EntitiesApi();
@@ -51,14 +52,18 @@ LocationData _locationDataFromLatLon(double lat, double lon) {
 }
 
 final effectiveLocationProvider = Provider<LocationData?>((ref) {
+  final userLocation = ref.watch(userLocationProvider);
   final qcCityKey = ref.watch(qcCityOverrideProvider);
   if (kQcMode) {
+    if (qcCityUsesCurrentDeviceLocation(qcCityKey)) {
+      return userLocation;
+    }
     final option = qcCityOptionForKey(qcCityKey);
     if (option != null) {
       return _locationDataFromLatLon(option.lat, option.lon);
     }
   }
-  return ref.watch(userLocationProvider);
+  return userLocation;
 });
 
 final entitiesRefreshProvider = StateProvider<int>((ref) => 0);
@@ -376,6 +381,7 @@ final entitiesProvider =
     Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
   final rawAsync = ref.watch(entitiesRawProvider);
   final selectedCategory = ref.watch(selectedCategoryProvider);
+  final favoriteIds = ref.watch(favoriteIdsProvider);
   final loc = ref.watch(effectiveLocationProvider);
   final locLat = loc?.latitude;
   final locLon = loc?.longitude;
@@ -384,9 +390,13 @@ final entitiesProvider =
   return rawAsync.whenData((items) {
     final filtered = selectedCategory == null
         ? items
-        : items
-            .where((e) => matchesCategoryForEntity(e, selectedCategory))
-            .toList();
+        : selectedCategory.id == kFavoritesCategoryId
+            ? items
+                .where((e) => favoriteIds.contains(favoriteEntityId(e)))
+                .toList()
+            : items
+                .where((e) => matchesCategoryForEntity(e, selectedCategory))
+                .toList();
 
     if (isPostedDateCategoryId(selectedCategoryId)) {
       final sorted = List<Map<String, dynamic>>.from(filtered);

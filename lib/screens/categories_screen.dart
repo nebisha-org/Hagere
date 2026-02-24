@@ -15,6 +15,7 @@ import '../state/translation_strings.dart';
 import '../state/qc_mode.dart';
 import '../state/qc_city_provider.dart';
 import '../state/override_providers.dart';
+import '../state/favorites_provider.dart';
 import '../models/carousel_item.dart';
 
 import 'package:agerelige_flutter_client/screens/add_listing_screen.dart';
@@ -353,7 +354,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           ),
         ),
         data: (cats) {
-          final displayCats = cats;
+          final displayCats = [kFavoritesCategory, ...cats];
           // rows:
           // 0                => Language toggle
           // 0..cats.length-1 => categories

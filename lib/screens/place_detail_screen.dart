@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -12,6 +11,7 @@ import '../utils/geo.dart';
 import '../utils/posted_date.dart';
 import 'package:agerelige_flutter_client/widgets/tr_text.dart';
 import '../state/qc_mode.dart';
+import '../state/favorites_provider.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_text.dart';
 import 'package:agerelige_flutter_client/widgets/qc_editable_image.dart';
 import 'package:agerelige_flutter_client/widgets/qc_star_rating.dart';
@@ -26,45 +26,6 @@ class PlaceDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
-  static const _favoritesKey = 'favorite_places';
-  bool _isFavorite = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadFavorite();
-  }
-
-  String _placeId(Map<String, dynamic> e) {
-    return (e['place_id'] ??
-            e['PK'] ??
-            e['id'] ??
-            '${e['name']}-${e['lat']}-${e['lon']}')
-        .toString();
-  }
-
-  Future<void> _loadFavorite() async {
-    final prefs = await SharedPreferences.getInstance();
-    final set = prefs.getStringList(_favoritesKey) ?? const [];
-    final id = _placeId(widget.entity);
-    if (!mounted) return;
-    setState(() => _isFavorite = set.contains(id));
-  }
-
-  Future<void> _toggleFavorite() async {
-    final prefs = await SharedPreferences.getInstance();
-    final set = prefs.getStringList(_favoritesKey)?.toSet() ?? <String>{};
-    final id = _placeId(widget.entity);
-    if (set.contains(id)) {
-      set.remove(id);
-      setState(() => _isFavorite = false);
-    } else {
-      set.add(id);
-      setState(() => _isFavorite = true);
-    }
-    await prefs.setStringList(_favoritesKey, set.toList());
-  }
-
   String _str(dynamic v) => (v ?? '').toString().trim();
 
   double? _toDouble(dynamic v) {
@@ -253,6 +214,8 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final e = widget.entity;
+    final favoriteIds = ref.watch(favoriteIdsProvider);
+    final isFavorite = favoriteIds.contains(favoriteEntityId(e));
     final entityId = _str(e['id'] ?? e['place_id']);
     final name = _str(e['name']);
     final address = _address(e);
@@ -280,9 +243,11 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
             expandedHeight: 280,
             actions: [
               IconButton(
-                icon:
-                    Icon(_isFavorite ? Icons.favorite : Icons.favorite_border),
-                onPressed: _toggleFavorite,
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                ),
+                onPressed: () =>
+                    ref.read(favoriteIdsProvider.notifier).toggleForEntity(e),
               ),
               IconButton(
                 icon: const Icon(Icons.share),
@@ -450,6 +415,7 @@ class _PlaceDetailScreenState extends ConsumerState<PlaceDetailScreen> {
                         QcStarRating(
                           entityId: entityId,
                           raw: e,
+                          iconSize: 20,
                         ),
                         if (categories.isNotEmpty)
                           Wrap(

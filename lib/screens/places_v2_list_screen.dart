@@ -8,6 +8,7 @@ import '../services/admin_items_api.dart';
 import '../state/category_providers.dart';
 import '../state/providers.dart';
 import '../state/qc_mode.dart';
+import '../state/favorites_provider.dart';
 import '../utils/posted_date.dart';
 import '../utils/geo.dart';
 import 'add_listing_screen.dart';
@@ -321,11 +322,14 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
     final locationBlockReason = ref.watch(locationBlockReasonProvider);
     final showLocationGate = isHardLocationBlock(locationBlockReason);
     final selectedCategory = ref.watch(selectedCategoryProvider);
+    final isFavoritesCategory = selectedCategory?.id == kFavoritesCategoryId;
     final qcState = ref.watch(qcEditStateProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const TrText('Nearby Businesses'),
+        title: isFavoritesCategory
+            ? const TrText('Favorites', translate: false)
+            : const TrText('Nearby Businesses'),
         actions: (kQcMode && qcState.visible)
             ? [
                 IconButton(
@@ -394,24 +398,25 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                     items.where((raw) => _matchesFilter(raw)).toList();
                 return Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const AddListingScreen(
-                                origin: AddListingOrigin.categoryList,
+                    if (!isFavoritesCategory)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AddListingScreen(
+                                  origin: AddListingOrigin.categoryList,
+                                ),
                               ),
                             ),
+                            icon: const Icon(Icons.trending_up),
+                            label: const TrText(
+                                'Starting free promote your listing'),
                           ),
-                          icon: const Icon(Icons.trending_up),
-                          label: const TrText(
-                              'Starting free promote your listing'),
                         ),
                       ),
-                    ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                       child: TextField(
@@ -428,7 +433,14 @@ class _PlacesV2ListScreenState extends ConsumerState<PlacesV2ListScreen> {
                     ),
                     Expanded(
                       child: filteredItems.isEmpty
-                          ? const Center(child: TrText('No places found'))
+                          ? Center(
+                              child: isFavoritesCategory
+                                  ? const TrText(
+                                      'No favorites yet. Tap the heart on any listing.',
+                                      translate: false,
+                                    )
+                                  : const TrText('No places found'),
+                            )
                           : ListView.separated(
                               itemCount: filteredItems.length + 1,
                               separatorBuilder: (_, __) =>

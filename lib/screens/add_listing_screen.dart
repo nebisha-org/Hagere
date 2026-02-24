@@ -23,6 +23,7 @@ import '../state/providers.dart';
 import '../state/sponsored_providers.dart';
 import '../state/payment_type_provider.dart';
 import '../state/stripe_mode_provider.dart';
+import '../state/favorites_provider.dart';
 import '../state/qc_mode.dart';
 import '../state/translation_provider.dart';
 import '../services/posted_entities_store.dart';
@@ -702,12 +703,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         : '/payments/checkout-session';
     final uri = Uri.parse('$checkoutBaseUrl$checkoutPath');
     final stripeModeValue = stripeMode == StripeMode.test ? 'test' : 'live';
-    final promotionTier = widget.origin == AddListingOrigin.categoryList
-        ? 'categoryFeatured'
-        : 'homeSponsored';
-    final categoryId = widget.origin == AddListingOrigin.categoryList
+    final requestedCategoryId = widget.origin == AddListingOrigin.categoryList
         ? (ref.read(selectedCategoryProvider)?.id ?? '').trim()
         : '';
+    final categoryId =
+        requestedCategoryId == kFavoritesCategoryId ? '' : requestedCategoryId;
+    final promotionTier =
+        widget.origin == AddListingOrigin.categoryList && categoryId.isNotEmpty
+            ? 'categoryFeatured'
+            : 'homeSponsored';
 
     final payload = <String, dynamic>{
       "entityId": entityId,
