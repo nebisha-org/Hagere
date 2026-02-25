@@ -395,6 +395,16 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     ref.invalidate(entitiesRawProvider);
   }
 
+  String _devicePlatform() {
+    if (kIsWeb) return 'web';
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isIOS) return 'ios';
+    if (Platform.isMacOS) return 'macos';
+    if (Platform.isWindows) return 'windows';
+    if (Platform.isLinux) return 'linux';
+    return 'unknown';
+  }
+
   String _contentTypeForPath(String path) {
     final lower = path.toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';
@@ -509,6 +519,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
   Future<String> _createEntity({
     List<_UploadedListingImage> uploadedImages = const [],
+    required String submissionMode,
   }) async {
     final category = ref.read(selectedCategoryProvider);
     if (category == null) {
@@ -516,14 +527,25 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     }
 
     final user = FirebaseAuth.instance.currentUser;
+    final currentLocation = ref.read(effectiveLocationProvider);
+    final currentLat = currentLocation?.latitude;
+    final currentLon = currentLocation?.longitude;
 
     final uri = Uri.parse('$entitiesBaseUrl/entities');
     final body = <String, dynamic>{
       "categoryId": category.id,
+      "categoryTitle": category.title,
       "name": _nameCtrl.text.trim(),
       "address": _addressCtrl.text.trim(),
       "remote": false,
+      "submissionMode": submissionMode,
+      "submissionOrigin": widget.origin.name,
+      "submitDevicePlatform": _devicePlatform(),
     };
+    if (currentLat != null && currentLon != null) {
+      body["submitLocationLat"] = currentLat;
+      body["submitLocationLon"] = currentLon;
+    }
 
     void putIfNotEmpty(String key, String value) {
       final v = value.trim();
@@ -797,7 +819,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       setLoading: (on) => setState(() => _saving = on),
       fn: () async {
         final uploadedImages = await _uploadPickedImages();
-        await _createEntity(uploadedImages: uploadedImages);
+        await _createEntity(
+          uploadedImages: uploadedImages,
+          submissionMode: 'free',
+        );
         await _analytics.logEvent(
           name: 'listing_save',
           // Firebase Analytics only accepts String/num values.
@@ -824,7 +849,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       setLoading: (on) => setState(() => _promoting = on),
       fn: () async {
         final uploadedImages = await _uploadPickedImages();
-        final entityId = await _createEntity(uploadedImages: uploadedImages);
+        final entityId = await _createEntity(
+          uploadedImages: uploadedImages,
+          submissionMode: 'paid',
+        );
         await _analytics.logEvent(
           name: 'listing_save',
           // Firebase Analytics only accepts String/num values.
