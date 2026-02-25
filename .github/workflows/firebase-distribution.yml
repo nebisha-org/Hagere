@@ -651,8 +651,8 @@ jobs:
               break
             fi
 
-            if grep -Eq "Cannot submit for review - A review submission is already in progress" /tmp/ios_submit_for_review.log; then
-              echo "::warning::iOS submit skipped due to existing App Store Connect review/submission state."
+            if grep -Eq "Cannot submit for review - A review submission is already in progress|A relationship value is not acceptable for the current resource state|The specified pre-release build could not be added|appStoreVersions with id .* is not in valid state" /tmp/ios_submit_for_review.log; then
+              echo "::warning::iOS submit skipped due to current App Store Connect submission/build relationship state."
               skipped_existing_submission=1
               break
             fi
