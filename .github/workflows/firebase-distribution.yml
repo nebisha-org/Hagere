@@ -253,6 +253,7 @@ jobs:
     env:
       CI_BUILD_NUMBER: ${{ needs.prepare.outputs.ci_build_number }}
       IOS_OTA_PROFILE_AVAILABLE: ${{ secrets.IOS_ADHOC_PROVISIONING_PROFILE_BASE64 != '' && '1' || '0' }}
+      IOS_ENABLE_TESTFLIGHT: ${{ vars.IOS_ENABLE_TESTFLIGHT || '1' }}
       IOS_OTA_S3_BUCKET: ${{ vars.IOS_OTA_S3_BUCKET || 'agerelige-user-images1' }}
       IOS_OTA_S3_KEY: ${{ vars.IOS_OTA_S3_KEY || 'allhabesha/ios/Runner_1770808126.ipa' }}
       IOS_OTA_AWS_REGION: ${{ vars.IOS_OTA_AWS_REGION || 'us-east-2' }}
@@ -401,6 +402,32 @@ jobs:
         run: |
           cd ios
           bundle exec fastlane ios adhoc_ipa
+
+      - name: Validate TestFlight secrets
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1' && env.IOS_ENABLE_TESTFLIGHT == '1'
+        env:
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
+        run: |
+          missing=0
+          for name in ASC_ISSUER_ID ASC_KEY_ID ASC_KEY_CONTENT_BASE64; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Upload same CI build to TestFlight
+        if: env.IOS_OTA_PROFILE_AVAILABLE == '1' && env.IOS_ENABLE_TESTFLIGHT == '1'
+        env:
+          CI_BUILD_NUMBER: ${{ env.CI_BUILD_NUMBER }}
+        run: |
+          cd ios
+          bundle exec fastlane ios beta
 
       - name: Evaluate OTA publish readiness
         id: ota_publish_ready
@@ -608,7 +635,7 @@ jobs:
           set -e
 
           if [[ "$status" -ne 0 ]]; then
-            if grep -Eq "A relationship value is not acceptable for the current resource state|The specified pre-release build could not be added|Cannot submit for review - A review submission is already in progress|Cannot submit for review - could not find an editable version for 'IOS'" /tmp/ios_submit_for_review.log; then
+            if grep -Eq "Cannot submit for review - A review submission is already in progress" /tmp/ios_submit_for_review.log; then
               echo "::warning::iOS submit skipped due to existing App Store Connect review/submission state."
               echo "IOS_SUBMIT_STATE=skipped_existing_submission_state" >> "$GITHUB_ENV"
             else

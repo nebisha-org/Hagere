@@ -200,7 +200,7 @@ platform :ios do
       skip_binary_upload: true,
       skip_screenshots: true,
       skip_metadata: true,
-      skip_app_version_update: true,
+      skip_app_version_update: false,
       run_precheck_before_submit: false,
       submission_information: {
         export_compliance_uses_encryption: false
@@ -226,7 +226,7 @@ platform :ios do
       skip_binary_upload: true,
       skip_screenshots: true,
       skip_metadata: true,
-      skip_app_version_update: true,
+      skip_app_version_update: false,
       run_precheck_before_submit: false,
       submission_information: {
         export_compliance_uses_encryption: false
