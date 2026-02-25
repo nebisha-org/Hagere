@@ -632,21 +632,50 @@ jobs:
           ASC_APP_VERSION: ${{ needs.prepare.outputs.app_version }}
           ASC_BUILD_NUMBER: ${{ needs.prepare.outputs.ci_build_number }}
         run: |
-          set +e
           cd ios
-          bundle exec fastlane ios submit_ci_build_for_review 2>&1 | tee /tmp/ios_submit_for_review.log
-          status=${PIPESTATUS[0]}
-          set -e
 
-          if [[ "$status" -ne 0 ]]; then
+          max_attempts=10
+          wait_seconds=90
+          attempt=1
+          submitted=0
+          skipped_existing_submission=0
+
+          while [[ "$attempt" -le "$max_attempts" ]]; do
+            set +e
+            bundle exec fastlane ios submit_ci_build_for_review 2>&1 | tee /tmp/ios_submit_for_review.log
+            status=${PIPESTATUS[0]}
+            set -e
+
+            if [[ "$status" -eq 0 ]]; then
+              submitted=1
+              break
+            fi
+
             if grep -Eq "Cannot submit for review - A review submission is already in progress" /tmp/ios_submit_for_review.log; then
               echo "::warning::iOS submit skipped due to existing App Store Connect review/submission state."
-              echo "IOS_SUBMIT_STATE=skipped_existing_submission_state" >> "$GITHUB_ENV"
-            else
-              exit "$status"
+              skipped_existing_submission=1
+              break
             fi
-          else
+
+            if grep -Eq "Build number: .* does not exist|No build found|Could not find build|Could not locate build" /tmp/ios_submit_for_review.log; then
+              if [[ "$attempt" -lt "$max_attempts" ]]; then
+                echo "::warning::App Store Connect has not exposed iOS build ${ASC_BUILD_NUMBER} yet (attempt ${attempt}/${max_attempts}). Retrying in ${wait_seconds}s."
+                sleep "$wait_seconds"
+                attempt=$((attempt + 1))
+                continue
+              fi
+            fi
+
+            exit "$status"
+          done
+
+          if [[ "$submitted" -eq 1 ]]; then
             echo "IOS_SUBMIT_STATE=submitted" >> "$GITHUB_ENV"
+          elif [[ "$skipped_existing_submission" -eq 1 ]]; then
+            echo "IOS_SUBMIT_STATE=skipped_existing_submission_state" >> "$GITHUB_ENV"
+          else
+            echo "::error::iOS submit failed after retries."
+            exit 1
           fi
 
       - name: Summarize canonical promotion
