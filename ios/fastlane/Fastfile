@@ -47,6 +47,12 @@ def asc_api_key
   )
 end
 
+def asc_release_notes
+  notes = ENV["ASC_RELEASE_NOTES"].to_s.strip
+  notes = "Bug fixes and performance improvements." if notes.empty?
+  { "en-US" => notes }
+end
+
 platform :ios do
   desc "Push a new beta build to TestFlight"
   lane :beta do
@@ -199,7 +205,8 @@ platform :ios do
       app_version: app_version,
       skip_binary_upload: true,
       skip_screenshots: true,
-      skip_metadata: true,
+      skip_metadata: false,
+      release_notes: asc_release_notes,
       skip_app_version_update: false,
       run_precheck_before_submit: false,
       submission_information: {
@@ -225,7 +232,8 @@ platform :ios do
       build_number: build_number,
       skip_binary_upload: true,
       skip_screenshots: true,
-      skip_metadata: true,
+      skip_metadata: false,
+      release_notes: asc_release_notes,
       skip_app_version_update: false,
       run_precheck_before_submit: false,
       submission_information: {
