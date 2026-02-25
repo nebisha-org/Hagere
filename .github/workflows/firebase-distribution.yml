@@ -425,6 +425,7 @@ jobs:
         if: env.IOS_OTA_PROFILE_AVAILABLE == '1' && env.IOS_ENABLE_TESTFLIGHT == '1'
         env:
           CI_BUILD_NUMBER: ${{ env.CI_BUILD_NUMBER }}
+          CI_WAIT_FOR_TESTFLIGHT_PROCESSING: "1"
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
